@@ -46,3 +46,18 @@ docs/instructions/Roadmap.md
 .cursorrules
 *.md
 .qodo
+
+# Local Netlify folder
+.netlify
+netlify.toml
+
+.env.production
+.env.example
+
+
+builder.config.json
+
+sync-and-rebrand.sh
+
+
+
