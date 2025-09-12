@@ -632,6 +632,7 @@ export const ChatImpl = memo(
         ref={animationScope}
         textareaRef={textareaRef}
         input={input}
+        setInput={setInput}
         showChat={showChat}
         chatStarted={chatStarted}
         isStreaming={isLoading || fakeLoading}

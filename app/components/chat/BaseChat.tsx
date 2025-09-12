@@ -33,6 +33,7 @@ import { ChatBox } from './ChatBox';
 import type { DesignScheme } from '~/types/design-scheme';
 import type { ElementInfo } from '~/components/workbench/Inspector';
 import LlmErrorAlert from './LLMApiAlert';
+import { getUserProfile, updateUserProfile } from '~/lib/stores/profile';
 
 const TEXTAREA_MIN_HEIGHT = 76;
 
@@ -49,6 +50,7 @@ interface BaseChatProps {
   enhancingPrompt?: boolean;
   promptEnhanced?: boolean;
   input?: string;
+  setInput?: (input: string) => void;
   model?: string;
   setModel?: (model: string) => void;
   provider?: ProviderInfo;
@@ -97,6 +99,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       setProvider,
       providerList,
       input = '',
+      setInput,
       enhancingPrompt,
       handleInputChange,
 
@@ -144,6 +147,46 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     const [progressAnnotations, setProgressAnnotations] = useState<ProgressAnnotation[]>([]);
     const expoUrl = useStore(expoUrlAtom);
     const [qrModalOpen, setQrModalOpen] = useState(false);
+
+    useEffect(() => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const authParam = urlParams.get('auth');
+
+      if (authParam) {
+        try {
+          // Décoder l'URL encoding, puis le base64, puis encore l'URL encoding
+          const urlDecoded = decodeURIComponent(authParam);
+          const base64Decoded = atob(urlDecoded);
+          const finalUrlDecoded = decodeURIComponent(base64Decoded);
+          const authData = JSON.parse(finalUrlDecoded);
+          console.log("Données reçues d'App1:", authData);
+
+          // Utiliser les données
+          const { user, token, realOrigin, stackblitzProject, titlesDescription } = authData;
+          localStorage.setItem('sourceOrigin', realOrigin || 'unknown');
+          localStorage.setItem('stackblitzProject', stackblitzProject || 'unknown');
+          localStorage.setItem('user', JSON.stringify(user) || '{}');
+          localStorage.setItem('token', token || 'unknown');
+
+          console.log('Description set:', titlesDescription);
+
+          // Insérer directement titlesDescription dans la boîte de chat si disponible
+          if (titlesDescription && setInput) {
+            setInput(titlesDescription);
+          }
+
+          // Delete the /?auth= ... param from the url
+          urlParams.delete('auth');
+          window.history.replaceState({}, '', window.location.pathname);
+
+          // Update the profile with the new data
+          updateUserProfile(user);
+          console.log('Profile updated:', getUserProfile());
+        } catch (error) {
+          console.error('Erreur de décodage des données:', error);
+        }
+      }
+    }, []);
 
     useEffect(() => {
       if (expoUrl) {
