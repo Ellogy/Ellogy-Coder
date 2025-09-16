@@ -34,6 +34,7 @@ import type { DesignScheme } from '~/types/design-scheme';
 import type { ElementInfo } from '~/components/workbench/Inspector';
 import LlmErrorAlert from './LLMApiAlert';
 import { getUserProfile, updateUserProfile } from '~/lib/stores/profile';
+import { getElloyDataFromCookies, testElloyyCookies } from '~/utils/ellogyUtils';
 
 const TEXTAREA_MIN_HEIGHT = 76;
 
@@ -99,7 +100,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       setProvider,
       providerList,
       input = '',
-      setInput,
+      setInput: _setInput,
       enhancingPrompt,
       handleInputChange,
 
@@ -149,42 +150,38 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     const [qrModalOpen, setQrModalOpen] = useState(false);
 
     useEffect(() => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const authParam = urlParams.get('auth');
+      // Test de récupération des cookies (à supprimer en production)
+      testElloyyCookies();
 
-      if (authParam) {
-        try {
-          // Décoder l'URL encoding, puis le base64, puis encore l'URL encoding
-          const urlDecoded = decodeURIComponent(authParam);
-          const base64Decoded = atob(urlDecoded);
-          const finalUrlDecoded = decodeURIComponent(base64Decoded);
-          const authData = JSON.parse(finalUrlDecoded);
-          console.log("Données reçues d'App1:", authData);
+      // Récupérer ellogy_user et ellogy_token depuis les cookies
+      const { ellogyUser, ellogyToken } = getElloyDataFromCookies();
 
-          // Utiliser les données
-          const { user, token, realOrigin, stackblitzProject, titlesDescription } = authData;
-          localStorage.setItem('sourceOrigin', realOrigin || 'unknown');
-          localStorage.setItem('stackblitzProject', stackblitzProject || 'unknown');
-          localStorage.setItem('user', JSON.stringify(user) || '{}');
-          localStorage.setItem('token', token || 'unknown');
+      if (ellogyUser && ellogyToken) {
+        // Stocker dans localStorage
+        localStorage.setItem('user', JSON.stringify(ellogyUser));
+        localStorage.setItem('token', ellogyToken);
 
-          console.log('Description set:', titlesDescription);
+        // Nettoyer l'URL (supprimer les paramètres de query)
+        window.history.replaceState({}, '', window.location.pathname);
 
-          // Insérer directement titlesDescription dans la boîte de chat si disponible
-          if (titlesDescription && setInput) {
-            setInput(titlesDescription);
-          }
-
-          // Delete the /?auth= ... param from the url
-          urlParams.delete('auth');
-          window.history.replaceState({}, '', window.location.pathname);
-
-          // Update the profile with the new data
-          updateUserProfile(user);
-          console.log('Profile updated:', getUserProfile());
-        } catch (error) {
-          console.error('Erreur de décodage des données:', error);
-        }
+        // Mettre à jour le profil utilisateur
+        updateUserProfile({
+          id: ellogyUser.id,
+          accountPlan: ellogyUser.accountPlan,
+          avatarLink: ellogyUser.avatarLink,
+          department: ellogyUser.department,
+          email: ellogyUser.email,
+          firstName: ellogyUser.firstName,
+          lastName: ellogyUser.lastName,
+          organization: ellogyUser.organization,
+          phoneNumber: ellogyUser.phoneNumber,
+          refreshToken: ellogyUser.refreshToken,
+          role: ellogyUser.role,
+          stripeCustomerId: ellogyUser.stripeCustomerId,
+        });
+        console.log('Profil mis à jour:', getUserProfile());
+      } else {
+        console.warn('ellogy_user ou ellogy_token non trouvés dans les cookies');
       }
     }, []);
 
