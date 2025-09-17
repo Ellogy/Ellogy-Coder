@@ -1,5 +1,5 @@
-appId: com.stackblitz.bolt.diy
-productName: Bolt Local
+appId: com.ellogy.ellogy-coder
+productName: Ellogy Coder
 directories:
   buildResources: build
   output: dist

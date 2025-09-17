@@ -153,7 +153,7 @@ export const TerminalTabs = memo(() => {
                       onClick={() => setActiveTerminal(index)}
                     >
                       <div className="i-ph:terminal-window-duotone text-lg" />
-                      Bolt Terminal
+                      Ellogy Coder Terminal
                     </button>
                   ) : (
                     <React.Fragment>
@@ -218,7 +218,7 @@ export const TerminalTabs = memo(() => {
           {Array.from({ length: terminalCount + 1 }, (_, index) => {
             const isActive = activeTerminal === index;
 
-            logger.debug(`Starting bolt terminal [${index}]`);
+            logger.debug(`Starting Ellogy-Coder terminal [${index}]`);
 
             if (index == 0) {
               return (

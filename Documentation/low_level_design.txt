@@ -1,0 +1,212 @@
+⏺ Ellogy Coder - Low-Level Design Analysis
+
+  Based on my comprehensive analysis of the repository, here's the reverse-engineered low-level design:
+
+  Architecture Overview
+
+  Ellogy Coder is a sophisticated AI-powered code generation and development platform built on modern web technologies. It's essentially a web-based IDE that leverages AI
+  models to generate, edit, and manage code projects in real-time.
+
+  Core Technology Stack
+
+  Frontend Framework
+
+  - Remix (v2.15.2) - Full-stack React framework for server-side rendering
+  - React (v18.3.1) - UI component library
+  - TypeScript - Type-safe JavaScript
+  - Vite (v5.4.11) - Build tool and development server
+
+  Styling & UI
+
+  - UnoCSS (v0.61.9) - Atomic CSS engine with custom Ellogy blue theme
+  - Tailwind-compatible reset and utilities
+  - Radix UI components for accessible primitives
+  - Framer Motion for animations and transitions
+
+  State Management
+
+  - Nanostores - Atomic state management
+  - Zustand - Additional state management for complex scenarios
+
+  Development Environment
+
+  - WebContainer API (v1.6.1) - Browser-based Node.js runtime
+  - CodeMirror (v6.x) - Advanced code editor with language support
+  - Xterm.js (v5.5.0) - Terminal emulator in the browser
+
+  System Architecture
+
+  1. Application Structure
+
+  app/
+  ├── components/          # UI Components
+  │   ├── chat/           # Chat interface & AI interaction
+  │   ├── workbench/      # Code editor, preview, file management
+  │   ├── sidebar/        # Navigation & settings
+  │   └── ui/             # Reusable UI primitives
+  ├── lib/                # Core libraries
+  │   ├── stores/         # State management (Nanostores)
+  │   ├── runtime/        # Action execution & file operations
+  │   ├── webcontainer/   # Browser runtime integration
+  │   └── .server/        # Server-side LLM providers
+  ├── routes/             # Remix routes
+  └── types/              # TypeScript definitions
+
+  2. Core Components Deep Dive
+
+  Chat System (app/components/chat/)
+
+  - BaseChat.tsx: Main chat interface with AI interaction
+  - Messages.client.tsx: Message rendering and streaming
+  - ChatBox: Input handling, file uploads, voice recognition
+  - APIKeyManager: Multi-provider API key management
+  - Supports 15+ AI providers (OpenAI, Anthropic, Google, Ollama, etc.)
+
+  Workbench (app/components/workbench/)
+
+  - Workbench.client.tsx: Main IDE interface
+  - EditorPanel.tsx: CodeMirror-based code editor
+  - Preview.tsx: Live preview of web applications
+  - FileTree.tsx: File system navigation
+  - Terminal.tsx: Integrated terminal
+  - DiffView.tsx: Code diff visualization
+
+  State Management (app/lib/stores/)
+
+  - workbench.ts: Central store for IDE state (874 lines)
+    - File management with CRUD operations
+    - Document editing and unsaved changes tracking
+    - Git integration for GitHub push
+    - ZIP download functionality
+    - File locking system
+  - chat.ts: Chat history and AI interaction state
+  - editor.ts: Code editor document management
+  - files.ts: File system operations
+  - terminal.ts: Terminal session management
+
+  3. AI Integration Architecture
+
+  Multi-Provider Support
+
+  // Supported AI providers from package.json:
+  - @ai-sdk/anthropic (Claude)
+  - @ai-sdk/openai (GPT models)
+  - @ai-sdk/google (Gemini)
+  - @ai-sdk/amazon-bedrock
+  - @ai-sdk/cohere
+  - @ai-sdk/deepseek
+  - @ai-sdk/mistral
+  - ollama-ai-provider (Local models)
+  - @openrouter/ai-sdk-provider
+
+  Action System
+
+  - ActionRunner: Executes AI-generated actions (file operations, shell commands)
+  - Message Parser: Parses AI responses into executable actions
+  - Streaming Support: Real-time action execution during AI response streaming
+
+  4. File System & Runtime
+
+  WebContainer Integration
+
+  - Browser-based Node.js environment
+  - Real file system operations without server
+  - Package management (npm/pnpm install)
+  - Live preview server
+
+  File Operations
+
+  interface FileOperations {
+    createFile(path: string, content: string | Uint8Array): Promise<boolean>
+    deleteFile(path: string): Promise<boolean>
+    saveFile(path: string, content: string): Promise<void>
+    lockFile(path: string): boolean  // Prevents AI editing
+    unlockFile(path: string): boolean
+  }
+
+  5. User Interface Design
+
+  Layout System
+
+  - Header: Logo, navigation, settings
+  - Chat Panel: AI conversation interface (resizable)
+  - Workbench: Three-view system (Code/Diff/Preview)
+  - Sidebar: File tree, settings, provider configuration
+
+  Responsive Design
+
+  - Mobile-first approach with breakpoints
+  - Collapsible panels for small screens
+  - Touch-friendly controls
+
+  Theme System
+
+  Custom Ellogy blue theme with CSS variables:
+  :root {
+    --bolt-elements-textPrimary: #1a5eec;
+    --bolt-elements-button-primary-background: #1a5eec;
+    // ... extensive theme variables
+  }
+
+  6. Deployment & Infrastructure
+
+  Build System
+
+  - Vite: Development and build tool
+  - Remix: SSR and routing
+  - UnoCSS: CSS generation
+  - TypeScript: Compilation
+
+  Deployment Options
+
+  - Cloudflare Pages (primary target via wrangler)
+  - Docker containers (production & development)
+  - Electron desktop app support
+
+  Environment Variables
+
+  Supports 15+ AI provider API keys and configuration options.
+
+  7. Key Features
+
+  AI-Powered Development
+
+  - Code generation from natural language
+  - Real-time streaming responses
+  - Multi-file project creation
+  - Automatic dependency management
+
+  Integrated Development Environment
+
+  - Monaco/CodeMirror editor with syntax highlighting
+  - Live preview for web applications
+  - Integrated terminal
+  - File management with drag & drop
+  - Git integration and GitHub publishing
+
+  Collaboration & Export
+
+  - Project ZIP download
+  - GitHub repository creation/updates
+  - Import/Export chat sessions
+  - QR code sharing for mobile preview
+
+  8. Security Considerations
+
+  - Client-side API key storage (cookies)
+  - Secure file operations through WebContainer
+  - XSS prevention through proper sanitization
+  - CSRF protection via Remix
+
+  9. Performance Optimizations
+
+  - Code Splitting: Lazy-loaded components
+  - Virtual Scrolling: For large file lists
+  - Debounced Actions: File save operations
+  - Memory Management: Proper cleanup of WebContainer resources
+
+  10. Browser Compatibility
+
+  - Modern browsers with WebContainer support
+  - Chrome 129 issue detection and warning
+  - Progressive enhancement for older browsers

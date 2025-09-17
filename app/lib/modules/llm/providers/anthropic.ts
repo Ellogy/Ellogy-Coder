@@ -75,7 +75,7 @@ export default class AnthropicProvider extends BaseProvider {
 
     return data.map((m: any) => {
       // Get accurate context window from Anthropic API
-      let contextWindow = 32000; // default fallback
+      let contextWindow = 200000; // default fallback
 
       // Anthropic provides max_tokens in their API response
       if (m.max_tokens) {
