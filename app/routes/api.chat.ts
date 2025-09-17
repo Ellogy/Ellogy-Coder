@@ -352,7 +352,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
         }
 
         if (errorMessage.includes('token') && errorMessage.includes('limit')) {
-          return 'Custom error: Token limit exceeded. The conversation is too long for the selected model. Try using a model with larger context window or start a new conversation.';
+          return ': Token limit exceeded. The conversation is too long for the selected model. Try using a model with larger context window or start a new conversation.';
         }
 
         if (errorMessage.includes('rate limit') || errorMessage.includes('429')) {

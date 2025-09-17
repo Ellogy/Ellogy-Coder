@@ -4,9 +4,9 @@
     <stop offset="10%" stop-color="#F0EBFF" />
     <stop offset="20%" stop-color="#E1D6FF" />
     <stop offset="30%" stop-color="#CEBEFF" />
-    <stop offset="40%" stop-color="#B69EFF" />
-    <stop offset="50%" stop-color="#9C7DFF" />
-    <stop offset="60%" stop-color="#8A5FFF" />
+    <stop offset="40%" stop-color="#829AFA" />
+    <stop offset="50%" stop-color="#627AF7" />
+    <stop offset="60%" stop-color="#1a5eec" />
     <stop offset="70%" stop-color="#7645E8" />
     <stop offset="80%" stop-color="#6234BB" />
     <stop offset="90%" stop-color="#502D93" />

@@ -1,0 +1,16 @@
+{
+  "users": [
+    {
+      "id": "user_1756560085539_1fu8u17xsec",
+      "username": "oizidbih",
+      "firstName": "Elmoustapha",
+      "passwordHash": "$2b$10$EQNt7aYB6e2KCEFCxbO2KuwKU61OIcY/VjEU746Vojpi7yZ3UXf5q",
+      "createdAt": "2025-08-30T13:21:25.629Z",
+      "preferences": {
+        "theme": "dark",
+        "deploySettings": {},
+        "workspaceConfig": {}
+      }
+    }
+  ]
+}
