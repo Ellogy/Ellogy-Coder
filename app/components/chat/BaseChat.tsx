@@ -35,6 +35,7 @@ import type { ElementInfo } from '~/components/workbench/Inspector';
 import LlmErrorAlert from './LLMApiAlert';
 import { getUserProfile, updateUserProfile } from '~/lib/stores/profile';
 import { getElloyDataFromCookies, testElloyyCookies } from '~/utils/ellogyUtils';
+import { verifyTokenWithGateway } from '~/lib/api/gateway';
 
 const TEXTAREA_MIN_HEIGHT = 76;
 
@@ -150,39 +151,55 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     const [qrModalOpen, setQrModalOpen] = useState(false);
 
     useEffect(() => {
-      // Test de récupération des cookies (à supprimer en production)
-      testElloyyCookies();
+      const handleAuthentication = async () => {
+        try {
+          // Test de récupération des cookies (à supprimer en production)
+          testElloyyCookies();
 
-      // Récupérer ellogy_user et ellogy_token depuis les cookies
-      const { ellogyUser, ellogyToken } = getElloyDataFromCookies();
+          // Récupérer ellogy_user et ellogy_token depuis les cookies
+          const { ellogyUser, ellogyToken } = getElloyDataFromCookies();
 
-      if (ellogyUser && ellogyToken) {
-        // Stocker dans localStorage
-        localStorage.setItem('user', JSON.stringify(ellogyUser));
-        localStorage.setItem('token', ellogyToken);
+          if (!ellogyUser || !ellogyToken) {
+            window.location.href = '/login';
+            return;
+          }
 
-        // Nettoyer l'URL (supprimer les paramètres de query)
-        window.history.replaceState({}, '', window.location.pathname);
+          // Vérifier le token avec la gateway
+          const isValidToken = await verifyTokenWithGateway(ellogyToken);
 
-        // Mettre à jour le profil utilisateur
-        updateUserProfile({
-          id: ellogyUser.id,
-          accountPlan: ellogyUser.accountPlan,
-          avatarLink: ellogyUser.avatarLink,
-          department: ellogyUser.department,
-          email: ellogyUser.email,
-          firstName: ellogyUser.firstName,
-          lastName: ellogyUser.lastName,
-          organization: ellogyUser.organization,
-          phoneNumber: ellogyUser.phoneNumber,
-          refreshToken: ellogyUser.refreshToken,
-          role: ellogyUser.role,
-          stripeCustomerId: ellogyUser.stripeCustomerId,
-        });
-        console.log('Profil mis à jour:', getUserProfile());
-      } else {
-        console.warn('ellogy_user ou ellogy_token non trouvés dans les cookies');
-      }
+          if (!isValidToken) {
+            window.location.href = '/login';
+            return;
+          }
+
+          // Token valide - stocker dans localStorage
+          localStorage.setItem('user', JSON.stringify(ellogyUser));
+          localStorage.setItem('token', ellogyToken);
+
+          // Mettre à jour le profil utilisateur
+          updateUserProfile({
+            id: ellogyUser.id,
+            accountPlan: ellogyUser.accountPlan,
+            avatarLink: ellogyUser.avatarLink,
+            department: ellogyUser.department,
+            email: ellogyUser.email,
+            firstName: ellogyUser.firstName,
+            lastName: ellogyUser.lastName,
+            organization: ellogyUser.organization,
+            phoneNumber: ellogyUser.phoneNumber,
+            refreshToken: ellogyUser.refreshToken,
+            role: ellogyUser.role,
+            stripeCustomerId: ellogyUser.stripeCustomerId,
+          });
+
+          console.log('Profil mis à jour:', getUserProfile());
+        } catch (error) {
+          console.error("Erreur lors de l'authentification:", error);
+          window.location.href = '/login';
+        }
+      };
+
+      handleAuthentication();
     }, []);
 
     useEffect(() => {

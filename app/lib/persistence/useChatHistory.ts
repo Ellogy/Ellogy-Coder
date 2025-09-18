@@ -145,7 +145,7 @@ ${value.content}
                       }
                     })
                     .join('\n')}
-                  ${commandActionsString} 
+                  ${commandActionsString}
                   </boltArtifact>
                   `, // Added commandActionsString, followupMessage, updated id and title
                   annotations: [

@@ -13,6 +13,7 @@ dotenv.config();
 
 export default defineConfig((config) => {
   return {
+    base: '/coder',
     define: {
       'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
     },
@@ -51,10 +52,12 @@ export default defineConfig((config) => {
           v3_throwAbortReason: true,
           v3_lazyRouteDiscovery: true,
         },
+        basename: '/coder',
       }),
       UnoCSS(),
       tsconfigPaths(),
       chrome129IssuePlugin(),
+      chatRedirectPlugin(),
       config.mode === 'production' && optimizeCssModules({ apply: 'build' }),
     ],
     envPrefix: [
@@ -102,6 +105,31 @@ function chrome129IssuePlugin() {
 
             return;
           }
+        }
+
+        next();
+      });
+    },
+  };
+}
+
+function chatRedirectPlugin() {
+  return {
+    name: 'chatRedirectPlugin',
+    configureServer(server: ViteDevServer) {
+      server.middlewares.use((req, res, next) => {
+        // Rediriger /chat/{id} vers /coder/chat/{id}
+        if (req.url && req.url.match(/^\/chat\/[^\/]+$/)) {
+          res.writeHead(301, { Location: `/coder${req.url}` });
+          res.end();
+          return;
+        }
+
+        // Rediriger / vers /coder/
+        if (req.url === '/' || req.url === '') {
+          res.writeHead(301, { Location: '/coder' });
+          res.end();
+          return;
         }
 
         next();
