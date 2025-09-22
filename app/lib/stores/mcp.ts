@@ -84,7 +84,7 @@ export const useMCPStore = create<Store & Actions>((set, get) => ({
     }
   },
   checkServersAvailabilities: async () => {
-    const response = await fetch('/api/mcp-check', {
+    const response = await fetch('/coder/api/mcp-check', {
       method: 'GET',
     });
 
@@ -99,7 +99,7 @@ export const useMCPStore = create<Store & Actions>((set, get) => ({
 }));
 
 async function updateServerConfig(config: MCPConfig) {
-  const response = await fetch('/api/mcp-update-config', {
+  const response = await fetch('/coder/api/mcp-update-config', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(config),

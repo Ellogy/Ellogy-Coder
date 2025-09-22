@@ -139,7 +139,7 @@ export function useNetlifyDeploy() {
       // Use chatId instead of artifact.id
       const existingSiteId = localStorage.getItem(`netlify-site-${currentChatId}`);
 
-      const response = await fetch('/api/netlify-deploy', {
+      const response = await fetch('/coder/api/netlify-deploy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

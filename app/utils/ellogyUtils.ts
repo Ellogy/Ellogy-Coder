@@ -60,7 +60,8 @@ export function getElloyDataFromCookies(): ElllogyData {
   }
 
   if (ellogyTokenCookie) {
-    ellogyToken = ellogyTokenCookie;
+    // Nettoyer le token des guillemets supplémentaires s'il y en a
+    ellogyToken = cleanJwtToken(ellogyTokenCookie);
   }
 
   return { ellogyUser, ellogyToken };
@@ -98,6 +99,25 @@ export function clearElloyDataFromCookies(): void {
 export function hasElloyDataInCookies(): boolean {
   const { ellogyUser, ellogyToken } = getElloyDataFromCookies();
   return !!(ellogyUser && ellogyToken);
+}
+
+/**
+ * Nettoie un token JWT des guillemets supplémentaires
+ * @param token - Le token à nettoyer
+ * @returns Le token nettoyé
+ */
+export function cleanJwtToken(token: string): string {
+  if (!token) {
+    return token;
+  }
+
+  // Supprimer les guillemets au début et à la fin
+  let cleaned = token.replace(/^"(.*)"$/, '$1');
+
+  // Supprimer les espaces en début et fin
+  cleaned = cleaned.trim();
+
+  return cleaned;
 }
 
 /**

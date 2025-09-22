@@ -44,7 +44,7 @@ export function SupabaseChatAlert({ alert, clearAlert, postMessage }: Props) {
     setIsExecuting(true);
 
     try {
-      const response = await fetch('/api/supabase/query', {
+      const response = await fetch('/coder/api/supabase/query', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

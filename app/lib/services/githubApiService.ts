@@ -112,7 +112,7 @@ class GitHubApiService {
 
     try {
       // Use server-side API endpoint for user validation
-      const response = await fetch('/api/system/git-info?action=getUser', {
+      const response = await fetch('/coder/api/system/git-info?action=getUser', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

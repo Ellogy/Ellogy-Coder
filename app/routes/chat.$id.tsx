@@ -14,7 +14,7 @@ export async function loader(args: LoaderFunctionArgs) {
  * Displays a specific chat conversation
  * Accessible at /coder/chat/{id}
  */
-export default function CoderChat() {
+export default function ChatPage() {
   return (
     <div className="flex flex-col h-full w-full bg-bolt-elements-background-depth-1">
       <BackgroundRays />

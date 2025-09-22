@@ -24,6 +24,11 @@ export const gatewayConfig: GatewayConfig = {
  * Obtient l'URL du gateway selon l'environnement
  */
 export const getGatewayUrl = (env: 'dev' | 'prod' = 'dev'): string => {
+  // En développement, utiliser le proxy Vite pour éviter les problèmes CORS
+  if (env === 'dev' && typeof window !== 'undefined') {
+    return '/api/gateway';
+  }
+
   return gatewayConfig[env].gateway;
 };
 

@@ -1,6 +1,6 @@
 import axios, { AxiosError } from 'axios';
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { getElloyDataFromCookies, clearElloyDataFromCookies } from '~/utils/ellogyUtils';
+import { getElloyDataFromCookies, clearElloyDataFromCookies, cleanJwtToken } from '~/utils/ellogyUtils';
 import { getGatewayUrl, getCurrentEnvironment, defaultRequestConfig } from '~/lib/config/gateway.config';
 
 // Constantes pour les endpoints
@@ -201,34 +201,120 @@ export const initializeGatewayInterceptors = () => {
  * Vérifie si le token est valide avec la gateway
  * Utilise une requête simple pour tester la validité du token
  */
-export const verifyTokenWithGateway = async (token: string): Promise<boolean> => {
+export const verifyTokenWithGateway = async (token: string): Promise<{ isValid: boolean; newToken?: string }> => {
   try {
     /*
      * Faire une requête simple avec le token pour vérifier sa validité
      * Si le token est valide, la requête réussit
      * Si le token est expiré, on reçoit une erreur 401
      */
-    const response = await gatewayInstance.get('/auth/refreshJwtToken', {
+    console.log('refreshToken', token);
+
+    // Nettoyer le token des guillemets supplémentaires
+    const cleanToken = cleanJwtToken(token);
+    console.log('Token original:', token);
+    console.log('Token nettoyé:', cleanToken);
+
+    // Récupérer les données utilisateur depuis les cookies
+    const { ellogyUser } = getElloyDataFromCookies();
+
+    /*
+     * const jwt="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBY2NvdW50UGxhbiI6IkJh4568144kIjoiYmYwMmFiODktYzZmZC00OTcyLWFjMjYtMzIwN2FkNmM1NGY2IiwiZW1haWwiOiJtYXJpZW0uZnJpa2hhQGlvdmlzaW9uLmlvIiwibmJmIjoxNzU4NTMxMjE1LCJleHAiOjE3NTg1MzcyMTUsImlhdCI6MTc1ODUzMTIxNSwiaXNzIjoiaHR0cHM6Ly9lbGxvZ3kudXNlcm1hbmFnZXIifQ.gggg"
+     */
+
+    // Préparer le body JSON avec JWT et refreshToken
+    const requestBody = {
+      jwt: cleanToken,
+      refreshToken: ellogyUser?.refreshToken || '',
+    };
+
+    console.log('Body JSON envoyé:', requestBody);
+
+    const response = await gatewayInstance.post('/dev/auth/refreshJwtToken', requestBody, {
       headers: {
-        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
       },
     });
 
     // Si on arrive ici, le token est valide
-    return response.status === HTTP_STATUS.OK;
+    console.log('Réponse complète:', response);
+    console.log('Token reçu:', response.data);
+
+    /*
+     * Récupérer le nouveau token depuis la réponse
+     * La réponse peut être directement le token (string) ou un objet avec le token
+     */
+    let newToken;
+
+    if (typeof response.data === 'string') {
+      // Si la réponse est directement le token
+      newToken = response.data;
+    } else if (response.data && response.data.token) {
+      // Si la réponse est un objet avec une propriété token
+      newToken = response.data.token;
+    } else {
+      // Fallback
+      newToken = response.data;
+    }
+
+    // Sauvegarder le nouveau token dans localStorage
+    if (newToken) {
+      localStorage.setItem('token', newToken);
+      console.log('Nouveau token sauvegardé:', newToken);
+
+      // Décoder le token JWT pour afficher les informations (débogage)
+      try {
+        const tokenParts = newToken.split('.');
+
+        if (tokenParts.length === 3) {
+          const payload = JSON.parse(atob(tokenParts[1]));
+          console.log('Informations du token:', {
+            userId: payload.userId,
+            email: payload.email,
+            exp: new Date(payload.exp * 1000).toLocaleString(),
+            iat: new Date(payload.iat * 1000).toLocaleString(),
+            accountPlan: payload.AccountPlan,
+          });
+        }
+      } catch (e) {
+        console.warn('Impossible de décoder le token JWT:', e);
+      }
+
+      // Mettre à jour le token dans le localStorage
+      localStorage.setItem('token', newToken);
+
+      // Mettre à jour aussi les cookies si nécessaire
+      const { ellogyUser } = getElloyDataFromCookies();
+
+      if (ellogyUser) {
+        const { setElloyDataToCookies } = await import('~/utils/ellogyUtils');
+        setElloyDataToCookies(ellogyUser, newToken);
+        console.log('Token mis à jour dans les cookies');
+      }
+    }
+
+    return { isValid: response.status === HTTP_STATUS.OK, newToken };
   } catch (error: any) {
     // Si erreur 401, le token est expiré/invalide
     if (error.response?.status === HTTP_STATUS.UNAUTHORIZED) {
-      return false;
+      return { isValid: false };
     }
 
-    /*
-     * Pour les autres erreurs, on considère le token comme valide
-     * car le problème pourrait être réseau ou autre
-     */
-    console.warn('Erreur lors de la vérification du token:', error);
+    // Gestion spécifique des erreurs CORS
+    if (error.code === 'ERR_NETWORK' || error.message?.includes('CORS') || error.message?.includes('Network Error')) {
+      console.warn('Erreur CORS détectée. Vérifiez la configuration du serveur ou utilisez le proxy de développement.');
 
-    return true;
+      /*
+       * En cas d'erreur CORS, on considère que le token pourrait être valide
+       * mais on ne peut pas le vérifier à cause de la configuration serveur
+       */
+      return { isValid: true }; // Ou false selon votre logique métier
+    }
+
+    // Pour les autres erreurs, on considère que le token n'est pas valide
+    console.error('Erreur lors de la vérification du token:', error);
+
+    return { isValid: false };
   }
 };
 

@@ -60,7 +60,7 @@ Instructions:
 5. If no perfect match exists, recommend the closest option
 
 Important: Provide only the selection tags in your response, no additional text.
-MOST IMPORTANT: YOU DONT HAVE TIME TO THINK JUST START RESPONDING BASED ON HUNCH 
+MOST IMPORTANT: YOU DONT HAVE TIME TO THINK JUST START RESPONDING BASED ON HUNCH
 `;
 
 const templates: Template[] = STARTER_TEMPLATES.filter((t) => !t.name.includes('shadcn'));
@@ -90,7 +90,7 @@ export const selectStarterTemplate = async (options: { message: string; model: s
     provider,
     system: starterTemplateSelectionPrompt(templates),
   };
-  const response = await fetch('/api/llmcall', {
+  const response = await fetch('/coder/api/llmcall', {
     method: 'POST',
     body: JSON.stringify(requestBody),
   });
@@ -115,7 +115,7 @@ export const selectStarterTemplate = async (options: { message: string; model: s
 const getGitHubRepoContent = async (repoName: string): Promise<{ name: string; path: string; content: string }[]> => {
   try {
     // Instead of directly fetching from GitHub, use our own API endpoint as a proxy
-    const response = await fetch(`/api/github-template?repo=${encodeURIComponent(repoName)}`);
+    const response = await fetch(`/coder/api/github-template?repo=${encodeURIComponent(repoName)}`);
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);

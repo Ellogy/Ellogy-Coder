@@ -160,21 +160,25 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
           const { ellogyUser, ellogyToken } = getElloyDataFromCookies();
 
           if (!ellogyUser || !ellogyToken) {
-            window.location.href = '/login';
+            window.location.href = 'coder/login';
             return;
           }
 
           // Vérifier le token avec la gateway
-          const isValidToken = await verifyTokenWithGateway(ellogyToken);
+          const tokenResult = await verifyTokenWithGateway(ellogyToken);
 
-          if (!isValidToken) {
-            window.location.href = '/login';
+          if (!tokenResult.isValid) {
+            window.location.href = 'coder/login';
             return;
+          }
+
+          // Si un nouveau token a été reçu, l'utiliser
+          if (tokenResult.newToken) {
+            console.log('Nouveau token reçu et sauvegardé:', tokenResult.newToken);
           }
 
           // Token valide - stocker dans localStorage
           localStorage.setItem('user', JSON.stringify(ellogyUser));
-          localStorage.setItem('token', ellogyToken);
 
           // Mettre à jour le profil utilisateur
           updateUserProfile({
@@ -195,7 +199,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
           console.log('Profil mis à jour:', getUserProfile());
         } catch (error) {
           console.error("Erreur lors de l'authentification:", error);
-          window.location.href = '/login';
+          window.location.href = 'coder/login';
         }
       };
 
@@ -269,7 +273,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
         }
 
         setIsModelLoading('all');
-        fetch('/api/models')
+        fetch('/coder/api/models')
           .then((response) => response.json())
           .then((data) => {
             const typedData = data as { modelList: ModelInfo[] };
@@ -294,7 +298,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       let providerModels: ModelInfo[] = [];
 
       try {
-        const response = await fetch(`/api/models/${encodeURIComponent(providerName)}`);
+        const response = await fetch(`/coder/api/models/${encodeURIComponent(providerName)}`);
         const data = await response.json();
         providerModels = (data as { modelList: ModelInfo[] }).modelList;
       } catch (error) {

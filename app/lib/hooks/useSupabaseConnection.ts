@@ -44,7 +44,7 @@ export function useSupabaseConnection() {
     try {
       const cleanToken = connection.token.trim();
 
-      const response = await fetch('/api/supabase', {
+      const response = await fetch('/coder/api/supabase', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
