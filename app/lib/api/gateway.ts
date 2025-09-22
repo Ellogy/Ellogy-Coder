@@ -219,7 +219,7 @@ export const verifyTokenWithGateway = async (token: string): Promise<{ isValid: 
     const { ellogyUser } = getElloyDataFromCookies();
 
     /*
-     * const jwt="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBY2NvdW50UGxhbiI6IkJh4568144kIjoiYmYwMmFiODktYzZmZC00OTcyLWFjMjYtMzIwN2FkNmM1NGY2IiwiZW1haWwiOiJtYXJpZW0uZnJpa2hhQGlvdmlzaW9uLmlvIiwibmJmIjoxNzU4NTMxMjE1LCJleHAiOjE3NTg1MzcyMTUsImlhdCI6MTc1ODUzMTIxNSwiaXNzIjoiaHR0cHM6Ly9lbGxvZ3kudXNlcm1hbmFnZXIifQ.gggg"
+     * const jwt="eyJhbGciOiJIUzI1NiIsInR5cCI6IkjklkpXVCJ9.eyJBY2NvdW50UGxhbiI6IkJh4568144kIjoiYmYwMmFiODktYzZmZC00OTcyLWFjMjYtMzIwN2FkNmM1NGY2IiwiZW1haWwiOiJtYXJpZW0uZnJpa2hhQGlvdmlzaW9uLmlvIiwibmJmIjoxNzU4NTMxMjE1LCJleHAiOjE3NTg1MzcyMTUsImlhdCI6MTc1ODUzMTIxNSwiaXNzIjoiaHR0cHM6Ly9lbGxvZ3kudXNlcm1hbmFnZXIifQ.gggg"
      */
 
     // Préparer le body JSON avec JWT et refreshToken
