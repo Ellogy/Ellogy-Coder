@@ -75,21 +75,38 @@ export function getElloyDataFromCookies(): ElllogyData {
  */
 export function setElloyDataToCookies(user: ElllogyUser, token: string, expireDays: number = 30): void {
   try {
-    Cookies.set('ellogy_user', JSON.stringify(user), { expires: expireDays });
-    Cookies.set('ellogy_token', token, { expires: expireDays });
-    console.log('Données Ellogy sauvegardées dans les cookies');
+    // Nettoyer le token avant de le sauvegarder
+    const cleanToken = cleanJwtToken(token);
+
+    // Configuration des cookies avec des options plus robustes
+    const cookieOptions = {
+      expires: expireDays,
+      secure: window.location.protocol === 'https:', // Secure en HTTPS
+      sameSite: 'lax' as const, // Protection CSRF
+      path: '/', // Accessible sur tout le site
+    };
+
+    Cookies.set('ellogy_user', JSON.stringify(user), cookieOptions);
+    Cookies.set('ellogy_token', cleanToken, cookieOptions);
+
+    console.log('Données Ellogy sauvegardées dans les cookies:', {
+      userSaved: !!user,
+      tokenSaved: !!cleanToken,
+      tokenLength: cleanToken.length,
+      cookieOptions,
+    });
+
+    // Vérifier que les cookies ont été sauvegardés
+    const savedUser = Cookies.get('ellogy_user');
+    const savedToken = Cookies.get('ellogy_token');
+    console.log('Vérification des cookies sauvegardés:', {
+      userCookieExists: !!savedUser,
+      tokenCookieExists: !!savedToken,
+      tokenLength: savedToken ? savedToken.length : 0,
+    });
   } catch (error) {
     console.error('Erreur lors de la sauvegarde des données Ellogy dans les cookies:', error);
   }
-}
-
-/**
- * Supprime les données Ellogy des cookies
- */
-export function clearElloyDataFromCookies(): void {
-  Cookies.remove('ellogy_user');
-  Cookies.remove('ellogy_token');
-  console.log('Données Ellogy supprimées des cookies');
 }
 
 /**
@@ -121,6 +138,19 @@ export function cleanJwtToken(token: string): string {
 }
 
 /**
+ * Supprime les données Ellogy des cookies
+ */
+export function clearElloyDataFromCookies(): void {
+  try {
+    Cookies.remove('ellogy_user');
+    Cookies.remove('ellogy_token');
+    console.log('Données Ellogy supprimées des cookies');
+  } catch (error) {
+    console.error('Erreur lors de la suppression des données Ellogy des cookies:', error);
+  }
+}
+
+/**
  * Fonction de test pour vérifier la récupération des cookies
  */
 export function testElloyyCookies(): void {
@@ -135,9 +165,19 @@ export function testElloyyCookies(): void {
   if (ellogyUser) {
     console.log('Détails utilisateur:');
     console.log('- ID:', ellogyUser.id);
-    console.log('- Nom:', ellogyUser.name);
     console.log('- Email:', ellogyUser.email);
+    console.log('- FirstName:', ellogyUser.firstName);
+    console.log('- LastName:', ellogyUser.lastName);
   }
+
+  // Vérifier aussi localStorage
+  const localStorageToken = localStorage.getItem('token');
+  const localStorageUser = localStorage.getItem('user');
+  console.log('localStorage token:', localStorageToken ? 'présent' : 'absent');
+  console.log('localStorage user:', localStorageUser ? 'présent' : 'absent');
+
+  // Vérifier tous les cookies
+  console.log('Tous les cookies:', document.cookie);
 
   console.log('=== Fin du test ===');
 }

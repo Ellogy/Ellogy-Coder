@@ -1,12 +1,12 @@
 import axios, { AxiosError } from 'axios';
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { getElloyDataFromCookies, clearElloyDataFromCookies, cleanJwtToken } from '~/utils/ellogyUtils';
+import { getElloyDataFromCookies, cleanJwtToken } from '~/utils/ellogyUtils';
 import { getGatewayUrl, getCurrentEnvironment, defaultRequestConfig } from '~/lib/config/gateway.config';
 
 // Constantes pour les endpoints
 const ENDPOINTS = {
-  REFRESH_TOKEN: '/auth/refreshJwtToken',
-  LOGIN: '/auth/login',
+  REFRESH_TOKEN: 'dev/auth/refreshJwtToken',
+  LOGIN: 'dev/auth/login',
 } as const;
 
 // Constantes pour les codes d'erreur HTTP
@@ -48,10 +48,10 @@ interface RefreshTokenResponse {
  * Gère les erreurs d'authentification en déconnectant l'utilisateur
  */
 const handleAuthError = (): void => {
-  clearElloyDataFromCookies();
+  //clearElloyDataFromCookies();
 
   if (typeof window !== 'undefined') {
-    window.location.href = '/login';
+    window.location.href = 'coder/login';
   }
 };
 
@@ -324,6 +324,91 @@ export const verifyTokenWithGateway = async (token: string): Promise<{ isValid: 
 export const isAuthenticated = (): boolean => {
   const { ellogyUser, ellogyToken } = getElloyDataFromCookies();
   return !!(ellogyUser && ellogyToken);
+};
+
+/**
+ * Fonction de login avec le gateway
+ */
+export const loginWithGateway = async (email: string, password: string) => {
+  try {
+    const response = await gatewayInstance.post('/dev/auth/login', {
+      email,
+      password,
+    });
+
+    // Vérifier si la réponse est 200
+    if (response.status === 200) {
+      console.log('Received Response from the Target: 200 /dev/auth/login');
+
+      const { jwt, refreshToken } = response.data;
+
+      // Sauvegarder dans localStorage
+      if (jwt) {
+        localStorage.setItem('token', jwt);
+        console.log('Token sauvegardé dans localStorage:', jwt);
+      }
+
+      if (response.data) {
+        localStorage.setItem('user', JSON.stringify(response.data));
+        console.log('Données utilisateur sauvegardées dans localStorage:', response.data);
+      }
+
+      // Sauvegarder dans les cookies
+      if (response.data && jwt) {
+        const user = response.data;
+
+        try {
+          const { setElloyDataToCookies } = await import('~/utils/ellogyUtils');
+          setElloyDataToCookies(
+            {
+              id: user.id,
+              email: user.email,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              role: user.role,
+              accountPlan: user.accountPlan,
+              organization: user.organization || null,
+              department: user.department || null,
+              phoneNumber: user.phoneNumber || null,
+              avatarLink: user.avatarLink || null,
+              stripeCustomerId: user.stripeCustomerId || '',
+              refreshToken: refreshToken || '',
+            },
+            jwt,
+          );
+          console.log('Données sauvegardées dans les cookies ellogy_token et ellogy_user');
+
+          // Vérifier immédiatement que les cookies ont été créés
+          const { ellogyUser, ellogyToken } = getElloyDataFromCookies();
+          console.log('Vérification immédiate des cookies:', {
+            hasUser: !!ellogyUser,
+            hasToken: !!ellogyToken,
+            userData: ellogyUser ? { id: ellogyUser.id, email: ellogyUser.email } : null,
+          });
+
+          // Rediriger immédiatement si les cookies sont présents
+          if (ellogyUser && ellogyToken) {
+            console.log('Cookies créés avec succès, redirection vers /coder');
+            window.location.href = '/coder';
+          } else {
+            console.error('Échec de la création des cookies, redirection vers /coder/login');
+            window.location.href = '/coder/login';
+          }
+        } catch (error) {
+          console.error('Erreur lors de la sauvegarde des cookies:', error);
+          window.location.href = '/coder/login';
+        }
+      } else {
+        console.error('Données utilisateur ou token manquants');
+        window.location.href = '/coder/login';
+      }
+    }
+
+    return response.data;
+  } catch (error: any) {
+    console.error('Erreur lors du login avec le gateway:', error);
+    throw error;
+  }
 };
 
 /**
