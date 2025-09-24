@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { loginWithGateway } from '~/lib/api/gateway';
 import { useAuth } from './AuthProvider';
+import eyeSlashIcon from './eye-slash.svg';
+import logoEllogy from './logo-ellogy.svg';
 
 interface LoginFormData {
   email: string;
@@ -68,43 +70,46 @@ export const LoginForm = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">Connexion à Ellogy</h2>
-          <p className="mt-2 text-center text-sm text-gray-600">Connectez-vous à votre compte Ellogy Coder</p>
+    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <div className="max-w-md w-full space-y-6">
+        <div className="text-center">
+          <img src={logoEllogy} alt="Ellogy Logo" className="mx-auto h-16 w-auto mb-4" />
+          <h2 className="text-3xl font-bold text-black">Login</h2>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm -space-y-px">
-            <div>
-              <label htmlFor="email" className="sr-only">
-                Adresse email
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Adresse email"
-                value={formData.email}
-                onChange={handleInputChange}
-              />
-            </div>
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-black mb-1">
+              Email
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              style={{ backgroundColor: 'rgb(245 245 245)' }}
+              placeholder="example@gmail.com"
+              value={formData.email}
+              onChange={handleInputChange}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-black mb-1">
+              Password
+            </label>
             <div className="relative">
-              <label htmlFor="password" className="sr-only">
-                Mot de passe
-              </label>
               <input
                 id="password"
                 name="password"
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Mot de passe"
+                className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                style={{ backgroundColor: 'rgb(245 245 245)' }}
+                placeholder="Enter your password"
                 value={formData.password}
                 onChange={handleInputChange}
               />
@@ -113,15 +118,8 @@ export const LoginForm = () => {
                 className="absolute inset-y-0 right-0 pr-3 flex items-center"
                 onClick={() => setShowPassword(!showPassword)}
               >
-                {showPassword ? (
-                  <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"
-                    />
-                  </svg>
+                {!showPassword ? (
+                  <img src={eyeSlashIcon} alt="Hide password" className="h-5 w-5 text-gray-400" />
                 ) : (
                   <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path
@@ -143,7 +141,7 @@ export const LoginForm = () => {
           </div>
 
           {error && (
-            <div className="rounded-md bg-red-50 p-4">
+            <div className="rounded-md bg-red-50 p-3">
               <div className="text-sm text-red-700">{error}</div>
             </div>
           )}
@@ -152,9 +150,9 @@ export const LoginForm = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex justify-center py-3 px-6 border border-transparent text-base font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
             >
-              {isLoading ? 'Connexion...' : 'Se connecter'}
+              {isLoading ? 'Connexion...' : 'Log in'}
             </button>
           </div>
         </form>
