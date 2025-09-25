@@ -65,8 +65,10 @@ const getInitialProviderSettings = (): ProviderSetting => {
     initialSettings[provider.name] = {
       ...provider,
       settings: {
-        // Local providers should be disabled by default
-        // Anthropic should be enabled by default
+        /*
+         * Local providers should be disabled by default
+         * Anthropic should be enabled by default
+         */
         enabled: provider.name === 'Anthropic' || !LOCAL_PROVIDERS.includes(provider.name),
       },
     };

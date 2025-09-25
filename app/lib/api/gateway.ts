@@ -173,6 +173,7 @@ export const setResponseInterceptor = (instance: AxiosInstance) => {
         } catch (refreshError) {
           console.error('Impossible de renouveler le token:', refreshError);
           handleAuthError();
+
           return Promise.reject(error);
         }
       }
@@ -425,6 +426,7 @@ export const loginWithGateway = async (email: string, password: string) => {
 export const logout = (): void => {
   handleAuthError();
 };
+
 /**
  * Récupère les résumés de tickets par ID de ticket
  * @param ticketId - L'ID du ticket pour lequel récupérer les résumés
@@ -432,14 +434,11 @@ export const logout = (): void => {
  */
 export const getTicketSummariesByTicketId = async (ticketId: string, token: string) => {
   try {
-    const response = await gatewayInstance.get(
-      `${ENDPOINTS.GET_TICKET_SUMMARIES_BY_TICKET_ID}?ticketId=${ticketId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+    const response = await gatewayInstance.get(`${ENDPOINTS.GET_TICKET_SUMMARIES_BY_TICKET_ID}?ticketId=${ticketId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
     if (response.status === HTTP_STATUS.OK) {
       console.log(`Résumés de tickets récupérés pour le ticket ID: ${ticketId}`);

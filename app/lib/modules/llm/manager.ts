@@ -183,6 +183,7 @@ export class LLMManager {
     const dynamicModelsName = dynamicModels.map((d) => d.name);
     const filteredStaticList = staticModels.filter((m) => !dynamicModelsName.includes(m.name));
     const modelList = [...dynamicModels, ...filteredStaticList];
+
     modelList.sort((a, b) => a.name.localeCompare(b.name));
 
     return modelList;
@@ -200,6 +201,7 @@ export class LLMManager {
   getDefaultProvider(): BaseProvider {
     // Essayer de trouver Anthropic en premier
     const anthropicProvider = this._providers.get('Anthropic');
+
     if (anthropicProvider) {
       return anthropicProvider;
     }
