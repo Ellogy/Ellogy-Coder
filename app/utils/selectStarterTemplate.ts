@@ -67,6 +67,12 @@ const templates: Template[] = STARTER_TEMPLATES.filter((t) => !t.name.includes('
 
 const parseSelectedTemplate = (llmOutput: string): { template: string; title: string } | null => {
   try {
+    // Vérifier que llmOutput existe et est une chaîne
+    if (!llmOutput || typeof llmOutput !== 'string') {
+      console.warn('llmOutput is not a valid string:', llmOutput);
+      return null;
+    }
+
     // Extract content between <templateName> tags
     const templateNameMatch = llmOutput.match(/<templateName>(.*?)<\/templateName>/);
     const titleMatch = llmOutput.match(/<title>(.*?)<\/title>/);
@@ -84,30 +90,62 @@ const parseSelectedTemplate = (llmOutput: string): { template: string; title: st
 
 export const selectStarterTemplate = async (options: { message: string; model: string; provider: ProviderInfo }) => {
   const { message, model, provider } = options;
+
+  // Vérifier que les paramètres requis sont présents
+  if (!message || !model || !provider) {
+    console.warn('Missing required parameters for selectStarterTemplate:', {
+      message: !!message,
+      model: !!model,
+      provider: !!provider,
+    });
+    return {
+      template: 'blank',
+      title: 'Untitled Project',
+    };
+  }
+
   const requestBody = {
     message,
     model,
     provider,
     system: starterTemplateSelectionPrompt(templates),
   };
-  const response = await fetch('/coder/api/llmcall', {
-    method: 'POST',
-    body: JSON.stringify(requestBody),
-  });
-  const respJson: { text: string } = await response.json();
-  console.log(respJson);
 
-  const { text } = respJson;
-  const selectedTemplate = parseSelectedTemplate(text);
+  try {
+    const response = await fetch('/coder/api/llmcall', {
+      method: 'POST',
+      body: JSON.stringify(requestBody),
+    });
 
-  if (selectedTemplate) {
-    return selectedTemplate;
-  } else {
-    console.log('No template selected, using blank template');
+    if (!response.ok) {
+      console.error('API call failed:', response.status, response.statusText);
+      return {
+        template: 'blank',
+        title: 'Untitled Project',
+      };
+    }
 
+    const respJson: { text: string } = await response.json();
+    console.log(respJson);
+
+    const { text } = respJson;
+    const selectedTemplate = parseSelectedTemplate(text);
+
+    if (selectedTemplate) {
+      return selectedTemplate;
+    } else {
+      console.log('No template selected, using blank template');
+
+      return {
+        template: 'blank',
+        title: 'Untitled Project',
+      };
+    }
+  } catch (error) {
+    console.error('Error in selectStarterTemplate:', error);
     return {
       template: 'blank',
-      title: '',
+      title: 'Untitled Project',
     };
   }
 };

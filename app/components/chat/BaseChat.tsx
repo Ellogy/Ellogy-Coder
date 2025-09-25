@@ -35,7 +35,7 @@ import type { ElementInfo } from '~/components/workbench/Inspector';
 import LlmErrorAlert from './LLMApiAlert';
 import { getUserProfile, updateUserProfile } from '~/lib/stores/profile';
 import { getElloyDataFromCookies, testElloyyCookies } from '~/utils/ellogyUtils';
-import { getTicketSummariesByTicketId, verifyTokenWithGateway } from '~/lib/api/gateway';
+import { getTicketDescriptionByUserId, getTicketSummariesByTicketId, verifyTokenWithGateway } from '~/lib/api/gateway';
 
 const TEXTAREA_MIN_HEIGHT = 76;
 
@@ -149,6 +149,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     const [progressAnnotations, setProgressAnnotations] = useState<ProgressAnnotation[]>([]);
     const expoUrl = useStore(expoUrlAtom);
     const [qrModalOpen, setQrModalOpen] = useState(false);
+    const [isLoadingTicket, setIsLoadingTicket] = useState(false);
 
     useEffect(() => {
       const handleAuthentication = async () => {
@@ -182,13 +183,36 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
             localStorage.setItem('user', JSON.stringify(ellogyUser));
 
             if (window.location.search.includes('ticket=')) {
-              const ticketSummaries = await getTicketSummariesByTicketId(
-                window.location.search.split('ticket=')[1],
-                ellogyToken,
-              );
+              // Afficher la page de chargement
+              setIsLoadingTicket(true);
+
+              const ticketId = window.location.search.split('ticket=')[1];
+
+              // Récupérer toutes les descriptions de tickets pour l'utilisateur
+              const allDescriptions = await getTicketDescriptionByUserId(ellogyUser.id, ellogyToken);
+              console.log('Toutes les descriptions de tickets:', allDescriptions);
+
+              // Filtrer par ID de ticket spécifique
+              let ticketDescription = null;
+
+              if (allDescriptions && allDescriptions.data && Array.isArray(allDescriptions.data)) {
+                ticketDescription = allDescriptions.data.find((ticket: any) => ticket.id === ticketId);
+              }
+
+              console.log('Description du ticket filtré:', ticketDescription);
+
+              // Récupérer les résumés du ticket
+              const ticketSummaries = await getTicketSummariesByTicketId(ticketId, ellogyToken);
               console.log('Summaries du ticket:', ticketSummaries);
 
-              // Regrouper toutes les données des summaries
+              // Construire le prompt avec la description du ticket en premier
+              let fullPrompt = '';
+
+              if (ticketDescription && ticketDescription.description) {
+                fullPrompt += `Description du ticket:\n${ticketDescription.description}\n\n`;
+              }
+
+              // Ajouter les exigences des summaries
               if (ticketSummaries && ticketSummaries.length > 0) {
                 const groupedData = ticketSummaries
                   .map((summary: any, index: number) => {
@@ -196,21 +220,30 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                   })
                   .join('\n\n');
 
-                const fullPrompt = `Voici les exigences du ticket regroupées :\n\n${groupedData}\n\nAnalysez ces exigences et proposez une solution technique complète.`;
+                fullPrompt += `Exigences détaillées du ticket:\n\n${groupedData}\n\n`;
+              }
 
-                // Insérer automatiquement dans l'input du chat
-                if (_setInput) {
-                  _setInput(fullPrompt);
+              fullPrompt += `Analysez ces informations et proposez une solution technique complète.`;
+
+              // Insérer automatiquement dans l'input du chat
+              if (_setInput) {
+                _setInput(fullPrompt);
+              }
+
+              // Exécuter automatiquement le message après un court délai
+              setTimeout(() => {
+                if (sendMessage && model && provider) {
+                  const syntheticEvent = {} as React.UIEvent;
+                  sendMessage(syntheticEvent, fullPrompt);
+                } else {
+                  console.warn("Modèle ou provider non défini, impossible d'envoyer le message automatiquement");
                 }
 
-                // Exécuter automatiquement le message après un court délai
+                // Annuler le login automatique après l'exécution du message
                 setTimeout(() => {
-                  if (sendMessage) {
-                    const syntheticEvent = {} as React.UIEvent;
-                    sendMessage(syntheticEvent, fullPrompt);
-                  }
-                }, 1000);
-              }
+                  setIsLoadingTicket(false);
+                }, 2000); // Délai supplémentaire pour laisser le temps à l'animation
+              }, 1000);
             }
           }
 
@@ -451,6 +484,19 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
         }
       }
     };
+
+    // Afficher la page de chargement si on charge un ticket
+    if (isLoadingTicket) {
+      return (
+        <div className="flex items-center justify-center h-full w-full">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <h2 className="text-xl font-semibold text-bolt-elements-textPrimary mb-2">Chargement du ticket...</h2>
+            <p className="text-bolt-elements-textSecondary">Préparation de votre demande en cours</p>
+          </div>
+        </div>
+      );
+    }
 
     const baseChat = (
       <div

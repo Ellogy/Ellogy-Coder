@@ -8,6 +8,7 @@ const ENDPOINTS = {
   REFRESH_TOKEN: 'dev/auth/refreshJwtToken',
   LOGIN: 'dev/auth/login',
   GET_TICKET_SUMMARIES_BY_TICKET_ID: 'dev/TicketSummary/getTicketSummariesByTicketId',
+  GET_TICKET_DESCRIPTION_BY_USER_ID: '/dev/Tickets/tickets/',
 } as const;
 
 // Constantes pour les codes d'erreur HTTP
@@ -448,6 +449,25 @@ export const getTicketSummariesByTicketId = async (ticketId: string, token: stri
     throw new Error(`Erreur lors de la récupération des résumés de tickets: ${response.status}`);
   } catch (error: any) {
     console.error('Erreur lors de la récupération des résumés de tickets:', error);
+    throw error;
+  }
+};
+export const getTicketDescriptionByUserId = async (userId: string, token: string) => {
+  try {
+    const response = await gatewayInstance.post(`${ENDPOINTS.GET_TICKET_DESCRIPTION_BY_USER_ID}${userId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (response.status === HTTP_STATUS.OK) {
+      console.log(`Descriptions de tickets récupérées pour l'utilisateur ID: ${userId}`);
+      return response.data;
+    }
+
+    throw new Error(`Erreur lors de la récupération des descriptions de tickets: ${response.status}`);
+  } catch (error: any) {
+    console.error('Erreur lors de la récupération de la description du ticket:', error);
     throw error;
   }
 };
