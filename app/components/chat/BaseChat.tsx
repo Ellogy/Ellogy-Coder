@@ -35,7 +35,7 @@ import type { ElementInfo } from '~/components/workbench/Inspector';
 import LlmErrorAlert from './LLMApiAlert';
 import { getUserProfile, updateUserProfile } from '~/lib/stores/profile';
 import { getElloyDataFromCookies, testElloyyCookies } from '~/utils/ellogyUtils';
-import { verifyTokenWithGateway } from '~/lib/api/gateway';
+import {  getTicketSummariesByTicketId, verifyTokenWithGateway } from '~/lib/api/gateway';
 
 const TEXTAREA_MIN_HEIGHT = 76;
 
@@ -165,9 +165,9 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
           }
 
           // Vérifier le token avec la gateway
-          const tokenResult = await verifyTokenWithGateway(ellogyToken);
+         const tokenResult = await verifyTokenWithGateway(ellogyToken);
 
-          if (!tokenResult.isValid) {
+           if (!tokenResult.isValid) {
             window.location.href = 'coder/login';
             return;
           }
@@ -178,8 +178,36 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
           }
 
           // Token valide - stocker dans localStorage
+          if(tokenResult.isValid) {
           localStorage.setItem('user', JSON.stringify(ellogyUser));
 
+          if( window.location.search.includes('ticket=') ) {
+            const ticketSummaries = await getTicketSummariesByTicketId(window.location.search.split('ticket=')[1],ellogyToken);
+            console.log('Summaries du ticket:', ticketSummaries);
+
+            // Regrouper toutes les données des summaries
+            if (ticketSummaries && ticketSummaries.length > 0) {
+              const groupedData = ticketSummaries.map((summary: any, index: number) => {
+                return `${index + 1}. ${summary.data}`;
+              }).join('\n\n');
+
+              const fullPrompt = `Voici les exigences du ticket regroupées :\n\n${groupedData}\n\nAnalysez ces exigences et proposez une solution technique complète.`;
+
+              // Insérer automatiquement dans l'input du chat
+              if (_setInput) {
+                _setInput(fullPrompt);
+              }
+
+              // Exécuter automatiquement le message après un court délai
+              setTimeout(() => {
+                if (sendMessage) {
+                  const syntheticEvent = {} as React.UIEvent;
+                  sendMessage(syntheticEvent, fullPrompt);
+                }
+              }, 1000);
+            }
+          }
+        }
           // Mettre à jour le profil utilisateur
           updateUserProfile({
             id: ellogyUser.id,
@@ -197,6 +225,9 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
           });
 
           console.log('Profil mis à jour:', getUserProfile());
+          //consulter les summaries du ticket
+
+
         } catch (error) {
           console.error("Erreur lors de l'authentification:", error);
           window.location.href = 'coder/login';
@@ -266,7 +297,24 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
 
         try {
           parsedApiKeys = getApiKeysFromCookies();
-          setApiKeys(parsedApiKeys);
+
+          // Charger automatiquement l'API key d'Anthropic depuis les variables d'environnement
+          fetch('/coder/api/export-api-keys')
+            .then((response) => response.json())
+            .then((envApiKeys: unknown) => {
+              const typedEnvApiKeys = envApiKeys as Record<string, string>;
+              const mergedKeys = { ...parsedApiKeys, ...typedEnvApiKeys };
+              setApiKeys(mergedKeys);
+
+              // Sauvegarder les clés fusionnées dans les cookies
+              Cookies.set('apiKeys', JSON.stringify(mergedKeys));
+            })
+            .catch((error) => {
+              console.error('Error loading environment API keys:', error);
+              if (parsedApiKeys) {
+                setApiKeys(parsedApiKeys);
+              }
+            });
         } catch (error) {
           console.error('Error loading API keys from cookies:', error);
           Cookies.remove('apiKeys');

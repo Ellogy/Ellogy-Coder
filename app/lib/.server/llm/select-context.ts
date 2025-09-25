@@ -41,6 +41,10 @@ export async function selectContext(props: {
       content = content.replace(/<div class=\\"__boltThought__\\">.*?<\/div>/s, '');
       content = content.replace(/<think>.*?<\/think>/s, '');
 
+      // Si le contenu devient vide après sanitization, retourner un espace pour éviter l'erreur de validation
+      const trimmed = content.trim();
+      content = trimmed.length > 0 ? trimmed : ' ';
+
       return { ...message, content };
     }
 

@@ -13,10 +13,10 @@ export interface GatewayConfig {
 
 export const gatewayConfig: GatewayConfig = {
   dev: {
-    gateway: 'https://ellogygateway-develop.azurewebsites.net',
+    gateway: 'https://ellogygateway-test.azurewebsites.net',
   },
   prod: {
-    gateway: 'https://ellogygateway-develop.azurewebsites.net',
+    gateway: 'https://ellogygateway-test.azurewebsites.net',
   },
 };
 

@@ -33,6 +33,10 @@ export async function createSummary(props: {
       content = content.replace(/<div class=\\"__boltThought__\\">.*?<\/div>/s, '');
       content = content.replace(/<think>.*?<\/think>/s, '');
 
+      // Si le contenu devient vide après sanitization, retourner un espace pour éviter l'erreur de validation
+      const trimmed = content.trim();
+      content = trimmed.length > 0 ? trimmed : ' ';
+
       return { ...message, content };
     }
 
@@ -75,8 +79,8 @@ export async function createSummary(props: {
 
   if (summary && summary.type === 'chatSummary') {
     chatId = summary.chatId;
-    summaryText = `Below is the Chat Summary till now, this is chat summary before the conversation provided by the user 
-you should also use this as historical message while providing the response to the user.        
+    summaryText = `Below is the Chat Summary till now, this is chat summary before the conversation provided by the user
+you should also use this as historical message while providing the response to the user.
 ${summary.summary}`;
 
     if (chatId) {
@@ -152,7 +156,7 @@ Note:
 
 
 ---
-        
+
         RULES:
         * Only provide the whole summary of the chat till now.
         * Do not provide any new information.
@@ -163,7 +167,7 @@ Note:
 
 Here is the previous summary of the chat:
 <old_summary>
-${summaryText} 
+${summaryText}
 </old_summary>
 
 Below is the chat after that:

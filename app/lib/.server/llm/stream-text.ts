@@ -48,7 +48,10 @@ function sanitizeText(text: string): string {
   sanitized = sanitized.replace(/<think>.*?<\/think>/s, '');
   sanitized = sanitized.replace(/<boltAction type="file" filePath="package-lock\.json">[\s\S]*?<\/boltAction>/g, '');
 
-  return sanitized.trim();
+  const trimmed = sanitized.trim();
+
+  // Si le contenu devient vide après sanitization, retourner un espace pour éviter l'erreur de validation
+  return trimmed.length > 0 ? trimmed : ' ';
 }
 
 export async function streamText(props: {
@@ -273,6 +276,12 @@ export async function streamText(props: {
     ),
   );
 
+  // Filtrer les messages vides avant de les convertir
+  const validMessages = processedMessages.filter((message) => {
+    const content = typeof message.content === 'string' ? message.content : '';
+    return content.trim().length > 0;
+  });
+
   const streamParams = {
     model: provider.getModelInstance({
       model: modelDetails.name,
@@ -282,7 +291,7 @@ export async function streamText(props: {
     }),
     system: chatMode === 'build' ? systemPrompt : discussPrompt(),
     ...tokenParams,
-    messages: convertToCoreMessages(processedMessages as any),
+    messages: convertToCoreMessages(validMessages as any),
     ...filteredOptions,
 
     // Set temperature to 1 for reasoning models (required by OpenAI API)

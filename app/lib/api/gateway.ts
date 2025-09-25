@@ -7,6 +7,7 @@ import { getGatewayUrl, getCurrentEnvironment, defaultRequestConfig } from '~/li
 const ENDPOINTS = {
   REFRESH_TOKEN: 'dev/auth/refreshJwtToken',
   LOGIN: 'dev/auth/login',
+  GET_TICKET_SUMMARIES_BY_TICKET_ID: 'dev/TicketSummary/getTicketSummariesByTicketId',
 } as const;
 
 // Constantes pour les codes d'erreur HTTP
@@ -21,6 +22,12 @@ export const baseURL = getGatewayUrl(getCurrentEnvironment());
 
 // Instance Axios pour le gateway
 export const gatewayInstance: AxiosInstance = axios.create({
+  baseURL,
+  ...defaultRequestConfig,
+});
+
+// Instance Axios pour la vérification de token (sans intercepteurs)
+const verifyTokenInstance: AxiosInstance = axios.create({
   baseURL,
   ...defaultRequestConfig,
 });
@@ -51,7 +58,7 @@ const handleAuthError = (): void => {
   //clearElloyDataFromCookies();
 
   if (typeof window !== 'undefined') {
-    window.location.href = 'coder/login';
+    window.location.href = '/coder/login';
   }
 };
 
@@ -165,6 +172,7 @@ export const setResponseInterceptor = (instance: AxiosInstance) => {
           return instance(originalRequest);
         } catch (refreshError) {
           console.error('Impossible de renouveler le token:', refreshError);
+          handleAuthError();
           return Promise.reject(error);
         }
       }
@@ -230,7 +238,7 @@ export const verifyTokenWithGateway = async (token: string): Promise<{ isValid: 
 
     console.log('Body JSON envoyé:', requestBody);
 
-    const response = await gatewayInstance.post('/dev/auth/refreshJwtToken', requestBody, {
+    const response = await verifyTokenInstance.post('/dev/auth/refreshJwtToken', requestBody, {
       headers: {
         'Content-Type': 'application/json',
       },
@@ -416,6 +424,33 @@ export const loginWithGateway = async (email: string, password: string) => {
  */
 export const logout = (): void => {
   handleAuthError();
+};
+/**
+ * Récupère les résumés de tickets par ID de ticket
+ * @param ticketId - L'ID du ticket pour lequel récupérer les résumés
+ * @returns Promise avec les données des résumés de tickets
+ */
+export const getTicketSummariesByTicketId = async (ticketId: string, token: string) => {
+  try {
+    const response = await gatewayInstance.get(
+      `${ENDPOINTS.GET_TICKET_SUMMARIES_BY_TICKET_ID}?ticketId=${ticketId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (response.status === HTTP_STATUS.OK) {
+      console.log(`Résumés de tickets récupérés pour le ticket ID: ${ticketId}`);
+      return response.data;
+    }
+
+    throw new Error(`Erreur lors de la récupération des résumés de tickets: ${response.status}`);
+  } catch (error: any) {
+    console.error('Erreur lors de la récupération des résumés de tickets:', error);
+    throw error;
+  }
 };
 
 // Initialiser les intercepteurs automatiquement
