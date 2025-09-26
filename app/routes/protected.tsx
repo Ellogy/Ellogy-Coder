@@ -81,7 +81,7 @@ function ProtectedContent() {
                   disabled={loading}
                   className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50"
                 >
-                  {loading ? 'Chargement...' : 'Récupérer les données du profil'}
+                  {loading ? 'loading...' : 'Retrieve profile data'}
                 </button>
 
                 {userData && (

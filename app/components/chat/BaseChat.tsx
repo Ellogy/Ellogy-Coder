@@ -491,8 +491,8 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
         <div className="flex items-center justify-center h-full w-full">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-            <h2 className="text-xl font-semibold text-bolt-elements-textPrimary mb-2">Chargement du ticket...</h2>
-            <p className="text-bolt-elements-textSecondary">Préparation de votre demande en cours</p>
+            <h2 className="text-xl font-semibold text-bolt-elements-textPrimary mb-2">Loading ticket...</h2>
+            <p className="text-bolt-elements-textSecondary">Preparing your current request</p>
           </div>
         </div>
       );
