@@ -23,7 +23,7 @@ export default defineConfig((config) => {
       allowedHosts: ['all'],
       proxy: {
         '/api/gateway': {
-          target: 'https://ellogygateway-develop.azurewebsites.net',
+          target: 'https://ellogygateway-test.azurewebsites.net',
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api\/gateway/, ''),
           configure: (proxy, _options) => {
