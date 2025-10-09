@@ -29,6 +29,7 @@ export const loader: LoaderFunction = async ({ context, request }) => {
    * 2. Server environment variables (from Cloudflare env)
    * 3. Process environment variables (from .env.local)
    * 4. LLMManager environment variables
+   * 5. VITE_ environment variables (checked on client-side)
    */
   const isSet = !!(
     apiKeys?.[provider] ||

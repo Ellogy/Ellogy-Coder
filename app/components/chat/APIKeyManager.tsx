@@ -28,7 +28,28 @@ export function getApiKeysFromCookies() {
     }
   }
 
-  return parsedKeys;
+  // Ajouter les clés API depuis les variables d'environnement VITE_
+  const envKeys: Record<string, string> = {};
+
+  // Vérifier VITE_ANTHROPIC_API_KEY
+  if (import.meta.env.VITE_ANTHROPIC_API_KEY) {
+    envKeys.Anthropic = import.meta.env.VITE_ANTHROPIC_API_KEY;
+  }
+
+  // Vérifier d'autres variables VITE_ si nécessaire
+  if (import.meta.env.VITE_OPENAI_API_KEY) {
+    envKeys.OpenAI = import.meta.env.VITE_OPENAI_API_KEY;
+  }
+
+  if (import.meta.env.VITE_GOOGLE_GENERATIVE_AI_API_KEY) {
+    envKeys.Google = import.meta.env.VITE_GOOGLE_GENERATIVE_AI_API_KEY;
+  }
+
+  /*
+   * Fusionner les clés des cookies avec celles des variables d'environnement
+   * Les variables d'environnement ont la priorité
+   */
+  return { ...parsedKeys, ...envKeys };
 }
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -55,6 +76,26 @@ export const APIKeyManager: React.FC<APIKeyManagerProps> = ({ provider, apiKey, 
       return;
     }
 
+    // Vérifier d'abord les variables VITE_ côté client
+    let viteEnvKey = '';
+
+    if (provider.name === 'Anthropic' && import.meta.env.VITE_ANTHROPIC_API_KEY) {
+      viteEnvKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
+    } else if (provider.name === 'OpenAI' && import.meta.env.VITE_OPENAI_API_KEY) {
+      viteEnvKey = import.meta.env.VITE_OPENAI_API_KEY;
+    } else if (provider.name === 'Google' && import.meta.env.VITE_GOOGLE_GENERATIVE_AI_API_KEY) {
+      viteEnvKey = import.meta.env.VITE_GOOGLE_GENERATIVE_AI_API_KEY;
+    }
+
+    if (viteEnvKey) {
+      // Si une clé VITE_ est trouvée, l'utiliser automatiquement
+      setApiKey(viteEnvKey);
+      setIsEnvKeySet(true);
+      providerEnvKeyStatusCache[provider.name] = true;
+
+      return;
+    }
+
     try {
       const response = await fetch(`/coder/api/check-env-key?provider=${encodeURIComponent(provider.name)}`);
       const data = await response.json();
@@ -67,7 +108,7 @@ export const APIKeyManager: React.FC<APIKeyManagerProps> = ({ provider, apiKey, 
       console.error('Failed to check environment API key:', error);
       setIsEnvKeySet(false);
     }
-  }, [provider.name]);
+  }, [provider.name, setApiKey]);
 
   useEffect(() => {
     checkEnvApiKey();
