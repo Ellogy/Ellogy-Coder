@@ -173,6 +173,8 @@ export const ChatImpl = memo(
         contextOptimization: contextOptimizationEnabled,
         chatMode,
         designScheme,
+
+        // Language parameter removed - AI always responds in English
         supabase: {
           isConnected: supabaseConn.isConnected,
           hasSelectedProject: !!selectedProject,

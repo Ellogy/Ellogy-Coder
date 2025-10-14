@@ -163,7 +163,16 @@ export async function streamText(props: {
         hasSelectedProject: options?.supabaseConnection?.hasSelectedProject || false,
         credentials: options?.supabaseConnection?.credentials || undefined,
       },
-    }) ?? getSystemPrompt();
+    }) ??
+    getSystemPrompt(
+      WORK_DIR,
+      {
+        isConnected: options?.supabaseConnection?.isConnected || false,
+        hasSelectedProject: options?.supabaseConnection?.hasSelectedProject || false,
+        credentials: options?.supabaseConnection?.credentials || undefined,
+      },
+      designScheme,
+    );
 
   if (chatMode === 'build' && contextFiles && contextOptimization) {
     const codeContext = createFilesContext(contextFiles, true);

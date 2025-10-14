@@ -175,7 +175,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
 
           // Si un nouveau token a été reçu, l'utiliser
           if (tokenResult.newToken) {
-            console.log('Nouveau token reçu et sauvegardé:', tokenResult.newToken);
+            console.log('New token received and saved:', tokenResult.newToken);
           }
 
           // Token valide - stocker dans localStorage
@@ -190,7 +190,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
 
               // Récupérer toutes les descriptions de tickets pour l'utilisateur
               const allDescriptions = await getTicketDescriptionByUserId(ellogyUser.id, ellogyToken);
-              console.log('Toutes les descriptions de tickets:', allDescriptions);
+              console.log('All ticket descriptions:', allDescriptions);
 
               // Filtrer par ID de ticket spécifique
               let ticketDescription = null;
@@ -199,17 +199,17 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                 ticketDescription = allDescriptions.data.find((ticket: any) => ticket.id === ticketId);
               }
 
-              console.log('Description du ticket filtré:', ticketDescription);
+              console.log('Filtered ticket description:', ticketDescription);
 
               // Récupérer les résumés du ticket
               const ticketSummaries = await getTicketSummariesByTicketId(ticketId, ellogyToken);
-              console.log('Summaries du ticket:', ticketSummaries);
+              console.log('Ticket summaries:', ticketSummaries);
 
               // Construire le prompt avec la description du ticket en premier
               let fullPrompt = '';
 
               if (ticketDescription && ticketDescription.description) {
-                fullPrompt += `Description du ticket:\n${ticketDescription.description}\n\n`;
+                fullPrompt += `Ticket description:\n${ticketDescription.description}\n\n`;
               }
 
               // Ajouter les exigences des summaries
@@ -220,10 +220,10 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                   })
                   .join('\n\n');
 
-                fullPrompt += `Exigences détaillées du ticket:\n\n${groupedData}\n\n`;
+                fullPrompt += `Detailed requirements of the ticket:\n\n${groupedData}\n\n`;
               }
 
-              fullPrompt += `Analysez ces informations et proposez une solution technique complète.`;
+              fullPrompt += `Analyze these informations and propose a complete technical solution.`;
 
               // Insérer automatiquement dans l'input du chat
               if (_setInput) {
@@ -236,7 +236,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                   const syntheticEvent = {} as React.UIEvent;
                   sendMessage(syntheticEvent, fullPrompt);
                 } else {
-                  console.warn("Modèle ou provider non défini, impossible d'envoyer le message automatiquement");
+                  console.warn('Model or provider not defined, impossible to send the message automatically');
                 }
 
                 // Annuler le login automatique après l'exécution du message
@@ -263,9 +263,9 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
             stripeCustomerId: ellogyUser.stripeCustomerId,
           });
 
-          console.log('Profil mis à jour:', getUserProfile());
+          console.log('Profile updated:', getUserProfile());
         } catch (error) {
-          console.error("Erreur lors de l'authentification:", error);
+          console.error('Error during authentication:', error);
           window.location.href = 'coder/login';
         }
       };
