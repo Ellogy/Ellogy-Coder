@@ -4,7 +4,8 @@ import { classNames } from '~/utils/classNames';
 import { AssistantMessage } from './AssistantMessage';
 import { UserMessage } from './UserMessage';
 import { useLocation } from '@remix-run/react';
-import { db, chatId } from '~/lib/persistence/useChatHistory';
+import { chatId } from '~/lib/persistence/useChatHistory';
+import { openDatabase } from '~/lib/persistence/db';
 import { forkChat } from '~/lib/persistence/db';
 import { toast } from 'react-toastify';
 import { forwardRef } from 'react';
@@ -37,6 +38,8 @@ export const Messages = forwardRef<HTMLDivElement, MessagesProps>(
 
     const handleFork = async (messageId: string) => {
       try {
+        const db = await openDatabase();
+
         if (!db || !chatId.get()) {
           toast.error('Chat persistence is not available');
           return;

@@ -10,6 +10,7 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { ClientOnly } from 'remix-utils/client-only';
 import { AuthProvider } from './components/auth/AuthProvider';
+import { ensureDatabaseExists } from './lib/persistence/db';
 
 import reactToastifyStyles from 'react-toastify/dist/ReactToastify.css?url';
 import globalStyles from './styles/index.scss?url';
@@ -66,6 +67,32 @@ export const Head = createHead(() => (
   </>
 ));
 
+// Composant pour initialiser la base de données
+function DatabaseInitializer() {
+  useEffect(() => {
+    const initDatabase = async () => {
+      try {
+        console.log('Initializing boltHistory database...');
+
+        const db = await ensureDatabaseExists();
+
+        if (db) {
+          console.log('Database initialized successfully:', db.name, 'version:', db.version);
+          console.log('Available stores:', Array.from(db.objectStoreNames));
+        } else {
+          console.error('Failed to initialize database');
+        }
+      } catch (error) {
+        console.error('Error initializing database:', error);
+      }
+    };
+
+    initDatabase();
+  }, []);
+
+  return null;
+}
+
 export function Layout({ children }: { children: React.ReactNode }) {
   const theme = useStore(themeStore);
 
@@ -75,6 +102,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      <DatabaseInitializer />
       <ClientOnly>
         {() => (
           <AuthProvider>

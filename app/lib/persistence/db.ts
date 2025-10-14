@@ -51,6 +51,9 @@ export async function openDatabase(): Promise<IDBDatabase | undefined> {
   });
 }
 
+// Alias pour la fonction ensureDatabaseExists
+export const ensureDatabaseExists = openDatabase;
+
 export async function getAll(db: IDBDatabase): Promise<ChatHistoryItem[]> {
   return new Promise((resolve, reject) => {
     const transaction = db.transaction('chats', 'readonly');
