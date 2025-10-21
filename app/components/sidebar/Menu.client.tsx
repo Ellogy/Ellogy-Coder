@@ -7,6 +7,8 @@ import { ControlPanel } from '~/components/@settings/core/ControlPanel';
 import { SettingsButton, HelpButton } from '~/components/ui/SettingsButton';
 import { Button } from '~/components/ui/Button';
 import { db, deleteById, getAll, chatId, type ChatHistoryItem, useChatHistory } from '~/lib/persistence';
+import { supabaseChatClient } from '~/lib/persistence/supabaseClient';
+import { FORCE_SUPABASE_ONLY } from '~/lib/persistence/supabaseConfig';
 import { cubicEasingFn } from '~/utils/easings';
 import { HistoryItem } from './HistoryItem';
 import { binDates } from './date-binning';
@@ -79,21 +81,62 @@ export const Menu = () => {
     searchFields: ['description'],
   });
 
-  const loadEntries = useCallback(() => {
-    if (db) {
-      getAll(db)
-        .then((list) => list.filter((item) => item.urlId && item.description))
-        .then(setList)
-        .catch((error) => toast.error(error.message));
+  const loadEntries = useCallback(async () => {
+    try {
+      // Récupérer l'ID utilisateur depuis le profileStore
+      const currentProfile = profileStore.get();
+      const userId = currentProfile?.id;
+
+      if (!userId) {
+        console.log('No user ID found, showing empty list');
+        setList([]);
+
+        return;
+      }
+
+      // Si FORCE_SUPABASE_ONLY est activé, utiliser uniquement Supabase
+      if (FORCE_SUPABASE_ONLY) {
+        console.log('FORCE_SUPABASE_ONLY: Loading chats from Supabase only for user:', userId);
+
+        const supabaseChats = await supabaseChatClient.getAllChatsByUserId(userId);
+        const filteredChats = supabaseChats.filter((item) => item.urlId && item.description);
+        setList(filteredChats);
+
+        return;
+      }
+
+      // Vérifier si Supabase est disponible
+      const supabaseAvailable = await supabaseChatClient.isConnected();
+
+      if (supabaseAvailable) {
+        console.log('Loading chats from Supabase for user:', userId);
+
+        const supabaseChats = await supabaseChatClient.getAllChatsByUserId(userId);
+        const filteredChats = supabaseChats.filter((item) => item.urlId && item.description);
+        setList(filteredChats);
+      } else if (db) {
+        /*
+         * Fallback to IndexedDB - Note: IndexedDB ne stocke pas d'informations utilisateur
+         * donc on charge tous les chats (limitation du système de fallback)
+         */
+        console.log('Loading chats from IndexedDB (fallback - no user filtering available)');
+
+        const indexedDBChats = await getAll(db);
+        const filteredChats = indexedDBChats.filter((item) => item.urlId && item.description);
+        setList(filteredChats);
+      } else {
+        console.log('No persistence method available');
+        setList([]);
+      }
+    } catch (error) {
+      console.error('Failed to load chat entries:', error);
+      toast.error('Failed to load chat history: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      setList([]);
     }
   }, []);
 
   const deleteChat = useCallback(
     async (id: string): Promise<void> => {
-      if (!db) {
-        throw new Error('Database not available');
-      }
-
       // Delete chat snapshot from localStorage
       try {
         const snapshotKey = `snapshot:${id}`;
@@ -103,9 +146,59 @@ export const Menu = () => {
         console.error(`Error deleting snapshot for chat ${id}:`, snapshotError);
       }
 
-      // Delete the chat from the database
-      await deleteById(db, id);
-      console.log('Successfully deleted chat:', id);
+      // Si FORCE_SUPABASE_ONLY est activé, utiliser uniquement Supabase
+      if (FORCE_SUPABASE_ONLY) {
+        console.log('FORCE_SUPABASE_ONLY: Deleting chat from Supabase only');
+
+        try {
+          await supabaseChatClient.deleteChat(id);
+          console.log('Successfully deleted chat from Supabase:', id);
+        } catch (supabaseError) {
+          console.error('Supabase delete failed:', supabaseError);
+
+          // Si Supabase échoue et qu'on a IndexedDB, utiliser IndexedDB comme fallback
+          if (db) {
+            console.log('Falling back to IndexedDB for delete due to Supabase failure');
+
+            try {
+              await deleteById(db, id);
+              console.log('Successfully deleted chat from IndexedDB as fallback:', id);
+            } catch (indexedDBError) {
+              console.error('IndexedDB fallback also failed:', indexedDBError);
+              throw new Error('Both Supabase and IndexedDB failed to delete chat');
+            }
+          } else {
+            throw new Error('Supabase failed and no IndexedDB available');
+          }
+        }
+      } else {
+        // Mode normal avec fallback
+        const supabaseAvailable = await supabaseChatClient.isConnected();
+
+        if (supabaseAvailable) {
+          console.log('Deleting chat from Supabase');
+
+          try {
+            await supabaseChatClient.deleteChat(id);
+            console.log('Successfully deleted chat from Supabase:', id);
+          } catch (supabaseError) {
+            console.error('Supabase delete failed, falling back to IndexedDB:', supabaseError);
+
+            if (db) {
+              await deleteById(db, id);
+              console.log('Successfully deleted chat from IndexedDB as fallback:', id);
+            } else {
+              throw new Error('Supabase failed and no IndexedDB available');
+            }
+          }
+        } else if (db) {
+          console.log('Deleting chat from IndexedDB (Supabase not available)');
+          await deleteById(db, id);
+          console.log('Successfully deleted chat from IndexedDB:', id);
+        } else {
+          throw new Error('No persistence method available');
+        }
+      }
     },
     [db],
   );
@@ -150,8 +243,8 @@ export const Menu = () => {
 
   const deleteSelectedItems = useCallback(
     async (itemsToDeleteIds: string[]) => {
-      if (!db || itemsToDeleteIds.length === 0) {
-        console.log('Bulk delete skipped: No DB or no items to delete.');
+      if (itemsToDeleteIds.length === 0) {
+        console.log('Bulk delete skipped: No items to delete.');
         return;
       }
 
@@ -199,7 +292,7 @@ export const Menu = () => {
         window.location.pathname = '/';
       }
     },
-    [deleteChat, loadEntries, db],
+    [deleteChat, loadEntries],
   );
 
   const closeDialog = () => {

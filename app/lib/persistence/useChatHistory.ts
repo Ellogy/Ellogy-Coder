@@ -17,6 +17,8 @@ import {
   setSnapshot,
   type IChatMetadata,
 } from './db';
+import { supabaseChatClient } from './supabaseClient';
+import { FORCE_SUPABASE_ONLY, DISABLE_INDEXEDDB } from './supabaseConfig';
 import type { FileMap } from '~/lib/stores/files';
 import type { Snapshot } from './types';
 import { webcontainer } from '~/lib/webcontainer';
@@ -34,7 +36,30 @@ export interface ChatHistoryItem {
 
 const persistenceEnabled = !import.meta.env.VITE_DISABLE_PERSISTENCE;
 
-export const db = persistenceEnabled ? await openDatabase() : undefined;
+// Désactiver IndexedDB si FORCE_SUPABASE_ONLY est activé
+export const db = persistenceEnabled && !DISABLE_INDEXEDDB ? await openDatabase() : undefined;
+
+// Function to check if Supabase is available and connected
+const isSupabaseAvailable = async (): Promise<boolean> => {
+  // Si FORCE_SUPABASE_ONLY est activé, toujours essayer Supabase
+  if (FORCE_SUPABASE_ONLY) {
+    try {
+      return await supabaseChatClient.isConnected();
+    } catch (error) {
+      console.log('Supabase not available, but FORCE_SUPABASE_ONLY is enabled:', error);
+
+      // Même si Supabase n'est pas connecté, on force l'utilisation
+      return true;
+    }
+  }
+
+  try {
+    return await supabaseChatClient.isConnected();
+  } catch (error) {
+    console.log('Supabase not available:', error);
+    return false;
+  }
+};
 
 export const chatId = atom<string | undefined>(undefined);
 export const description = atom<string | undefined>(undefined);
@@ -50,158 +75,178 @@ export function useChatHistory() {
   const [urlId, setUrlId] = useState<string | undefined>();
 
   useEffect(() => {
-    if (!db) {
-      setReady(true);
-
-      if (persistenceEnabled) {
-        const error = new Error('Chat persistence is unavailable');
-        logStore.logError('Chat persistence initialization failed', error);
-        toast.error('Chat persistence is unavailable');
+    const loadChat = async () => {
+      if (!mixedId) {
+        setReady(true);
+        return;
       }
 
-      return;
-    }
+      try {
+        // Si FORCE_SUPABASE_ONLY est activé, utiliser uniquement Supabase
+        if (FORCE_SUPABASE_ONLY) {
+          console.log('FORCE_SUPABASE_ONLY: Loading chat from Supabase only');
 
-    if (mixedId) {
-      Promise.all([
-        getMessages(db, mixedId),
-        getSnapshot(db, mixedId), // Fetch snapshot from DB
-      ])
-        .then(async ([storedMessages, snapshot]) => {
-          if (storedMessages && storedMessages.messages.length > 0) {
-            /*
-             * const snapshotStr = localStorage.getItem(`snapshot:${mixedId}`); // Remove localStorage usage
-             * const snapshot: Snapshot = snapshotStr ? JSON.parse(snapshotStr) : { chatIndex: 0, files: {} }; // Use snapshot from DB
-             */
-            const validSnapshot = snapshot || { chatIndex: '', files: {} }; // Ensure snapshot is not undefined
-            const summary = validSnapshot.summary;
+          const [storedMessages, snapshot] = await Promise.all([
+            supabaseChatClient.getMessages(mixedId),
+            supabaseChatClient.getSnapshot(mixedId),
+          ]);
 
-            const rewindId = searchParams.get('rewindTo');
-            let startingIdx = -1;
-            const endingIdx = rewindId
-              ? storedMessages.messages.findIndex((m) => m.id === rewindId) + 1
-              : storedMessages.messages.length;
-            const snapshotIndex = storedMessages.messages.findIndex((m) => m.id === validSnapshot.chatIndex);
+          await processChatData(storedMessages, snapshot);
+        } else {
+          // Mode normal avec fallback
+          const supabaseAvailable = await isSupabaseAvailable();
 
-            if (snapshotIndex >= 0 && snapshotIndex < endingIdx) {
-              startingIdx = snapshotIndex;
-            }
+          if (supabaseAvailable) {
+            const [storedMessages, snapshot] = await Promise.all([
+              supabaseChatClient.getMessages(mixedId),
+              supabaseChatClient.getSnapshot(mixedId),
+            ]);
 
-            if (snapshotIndex > 0 && storedMessages.messages[snapshotIndex].id == rewindId) {
-              startingIdx = -1;
-            }
+            await processChatData(storedMessages, snapshot);
+          } else if (db) {
+            // Fallback to IndexedDB
+            const [storedMessages, snapshot] = await Promise.all([getMessages(db, mixedId), getSnapshot(db, mixedId)]);
 
-            let filteredMessages = storedMessages.messages.slice(startingIdx + 1, endingIdx);
-            let archivedMessages: Message[] = [];
-
-            if (startingIdx >= 0) {
-              archivedMessages = storedMessages.messages.slice(0, startingIdx + 1);
-            }
-
-            setArchivedMessages(archivedMessages);
-
-            if (startingIdx > 0) {
-              const files = Object.entries(validSnapshot?.files || {})
-                .map(([key, value]) => {
-                  if (value?.type !== 'file') {
-                    return null;
-                  }
-
-                  return {
-                    content: value.content,
-                    path: key,
-                  };
-                })
-                .filter((x): x is { content: string; path: string } => !!x); // Type assertion
-              const projectCommands = await detectProjectCommands(files);
-
-              // Call the modified function to get only the command actions string
-              const commandActionsString = createCommandActionsString(projectCommands);
-
-              filteredMessages = [
-                {
-                  id: generateId(),
-                  role: 'user',
-                  content: `Restore project from snapshot`, // Removed newline
-                  annotations: ['no-store', 'hidden'],
-                },
-                {
-                  id: storedMessages.messages[snapshotIndex].id,
-                  role: 'assistant',
-
-                  // Combine followup message and the artifact with files and command actions
-                  content: `Ellogy-Coder Restored your chat from a snapshot. You can revert this message to load the full chat history.
-                  <boltArtifact id="restored-project-setup" title="Restored Project & Setup" type="bundled">
-                  ${Object.entries(snapshot?.files || {})
-                    .map(([key, value]) => {
-                      if (value?.type === 'file') {
-                        return `
-                      <boltAction type="file" filePath="${key}">
-${value.content}
-                      </boltAction>
-                      `;
-                      } else {
-                        return ``;
-                      }
-                    })
-                    .join('\n')}
-                  ${commandActionsString}
-                  </boltArtifact>
-                  `, // Added commandActionsString, followupMessage, updated id and title
-                  annotations: [
-                    'no-store',
-                    ...(summary
-                      ? [
-                          {
-                            chatId: storedMessages.messages[snapshotIndex].id,
-                            type: 'chatSummary',
-                            summary,
-                          } satisfies ContextAnnotation,
-                        ]
-                      : []),
-                  ],
-                },
-
-                // Remove the separate user and assistant messages for commands
-                /*
-                 *...(commands !== null // This block is no longer needed
-                 *  ? [ ... ]
-                 *  : []),
-                 */
-                ...filteredMessages,
-              ];
-              restoreSnapshot(mixedId);
-            }
-
-            setInitialMessages(filteredMessages);
-
-            setUrlId(storedMessages.urlId);
-            description.set(storedMessages.description);
-            chatId.set(storedMessages.id);
-            chatMetadata.set(storedMessages.metadata);
+            await processChatData(storedMessages, snapshot);
           } else {
-            navigate('/', { replace: true });
+            if (persistenceEnabled) {
+              const error = new Error('Chat persistence is unavailable');
+              logStore.logError('Chat persistence initialization failed', error);
+              toast.error('Chat persistence is unavailable');
+            }
+
+            setReady(true);
+
+            return;
           }
+        }
+      } catch (error) {
+        console.error('Failed to load chat:', error);
+        logStore.logError('Failed to load chat messages or snapshot', error);
+        toast.error('Failed to load chat: ' + (error instanceof Error ? error.message : 'Unknown error'));
+        setReady(true);
+      }
+    };
 
-          setReady(true);
-        })
-        .catch((error) => {
-          console.error(error);
+    const processChatData = async (storedMessages: any, snapshot: any) => {
+      if (storedMessages && storedMessages.messages.length > 0) {
+        const validSnapshot = snapshot || { chatIndex: '', files: {} }; // Ensure snapshot is not undefined
+        const summary = validSnapshot.summary;
 
-          logStore.logError('Failed to load chat messages or snapshot', error); // Updated error message
-          toast.error('Failed to load chat: ' + error.message); // More specific error
-        });
-    } else {
-      // Handle case where there is no mixedId (e.g., new chat)
+        const rewindId = searchParams.get('rewindTo');
+        let startingIdx = -1;
+        const endingIdx = rewindId
+          ? storedMessages.messages.findIndex((m: any) => m.id === rewindId) + 1
+          : storedMessages.messages.length;
+        const snapshotIndex = storedMessages.messages.findIndex((m: any) => m.id === validSnapshot.chatIndex);
+
+        if (snapshotIndex >= 0 && snapshotIndex < endingIdx) {
+          startingIdx = snapshotIndex;
+        }
+
+        if (snapshotIndex > 0 && storedMessages.messages[snapshotIndex].id == rewindId) {
+          startingIdx = -1;
+        }
+
+        let filteredMessages = storedMessages.messages.slice(startingIdx + 1, endingIdx);
+        let archivedMessages: Message[] = [];
+
+        if (startingIdx >= 0) {
+          archivedMessages = storedMessages.messages.slice(0, startingIdx + 1);
+        }
+
+        setArchivedMessages(archivedMessages);
+
+        if (startingIdx > 0) {
+          const files = Object.entries(validSnapshot?.files || {})
+            .map(([key, value]: [string, any]) => {
+              if (value?.type !== 'file') {
+                return null;
+              }
+
+              return {
+                content: value.content,
+                path: key,
+              };
+            })
+            .filter((x): x is { content: string; path: string } => !!x); // Type assertion
+          const projectCommands = await detectProjectCommands(files);
+
+          // Call the modified function to get only the command actions string
+          const commandActionsString = createCommandActionsString(projectCommands);
+
+          filteredMessages = [
+            {
+              id: generateId(),
+              role: 'user',
+              content: `Restore project from snapshot`, // Removed newline
+              annotations: ['no-store', 'hidden'],
+            },
+            {
+              id: storedMessages.messages[snapshotIndex].id,
+              role: 'assistant',
+
+              // Combine followup message and the artifact with files and command actions
+              content: `Ellogy-Coder Restored your chat from a snapshot. You can revert this message to load the full chat history.
+              <boltArtifact id="restored-project-setup" title="Restored Project & Setup" type="bundled">
+              ${Object.entries(snapshot?.files || {})
+                .map(([key, value]: [string, any]) => {
+                  if (value?.type === 'file') {
+                    return `
+                  <boltAction type="file" filePath="${key}">
+${value.content}
+                  </boltAction>
+                  `;
+                  } else {
+                    return ``;
+                  }
+                })
+                .join('\n')}
+              ${commandActionsString}
+              </boltArtifact>
+              `, // Added commandActionsString, followupMessage, updated id and title
+              annotations: [
+                'no-store',
+                ...(summary
+                  ? [
+                      {
+                        chatId: storedMessages.messages[snapshotIndex].id,
+                        type: 'chatSummary',
+                        summary,
+                      } satisfies ContextAnnotation,
+                    ]
+                  : []),
+              ],
+            },
+            ...filteredMessages,
+          ];
+
+          if (mixedId) {
+            restoreSnapshot(mixedId);
+          }
+        }
+
+        setInitialMessages(filteredMessages);
+
+        setUrlId(storedMessages.urlId);
+        description.set(storedMessages.description);
+        chatId.set(storedMessages.id);
+        chatMetadata.set(storedMessages.metadata);
+      } else {
+        navigate('/', { replace: true });
+      }
+
       setReady(true);
-    }
-  }, [mixedId, db, navigate, searchParams]); // Added db, navigate, searchParams dependencies
+    };
+
+    loadChat();
+  }, [mixedId, db, navigate, searchParams]);
 
   const takeSnapshot = useCallback(
     async (chatIdx: string, files: FileMap, _chatId?: string | undefined, chatSummary?: string) => {
       const id = chatId.get();
 
-      if (!id || !db) {
+      if (!id) {
         return;
       }
 
@@ -211,9 +256,47 @@ ${value.content}
         summary: chatSummary,
       };
 
-      // localStorage.setItem(`snapshot:${id}`, JSON.stringify(snapshot)); // Remove localStorage usage
       try {
-        await setSnapshot(db, id, snapshot);
+        // Si FORCE_SUPABASE_ONLY est activé, utiliser uniquement Supabase
+        if (FORCE_SUPABASE_ONLY) {
+          console.log('FORCE_SUPABASE_ONLY: Saving snapshot to Supabase only');
+
+          try {
+            await supabaseChatClient.setSnapshot(id, snapshot);
+            console.log('Snapshot saved to Supabase successfully');
+          } catch (supabaseError) {
+            console.error('Supabase snapshot save failed:', supabaseError);
+
+            // Si Supabase échoue et qu'on a IndexedDB, utiliser IndexedDB comme fallback
+            if (db) {
+              console.log('Falling back to IndexedDB for snapshot due to Supabase failure');
+
+              try {
+                await setSnapshot(db, id, snapshot);
+                console.log('Snapshot saved to IndexedDB as fallback');
+              } catch (indexedDBError) {
+                console.error('IndexedDB fallback also failed:', indexedDBError);
+
+                // Ne pas lancer l'erreur, juste logger
+                console.warn('Both Supabase and IndexedDB failed, snapshot not saved');
+              }
+            } else {
+              console.warn('Supabase failed and no IndexedDB available, snapshot not saved');
+            }
+          }
+        } else {
+          // Mode normal avec fallback
+          const supabaseAvailable = await isSupabaseAvailable();
+
+          if (supabaseAvailable) {
+            await supabaseChatClient.setSnapshot(id, snapshot);
+          } else if (db) {
+            // Fallback to IndexedDB
+            await setSnapshot(db, id, snapshot);
+          } else {
+            throw new Error('No persistence method available');
+          }
+        }
       } catch (error) {
         console.error('Failed to save snapshot:', error);
         toast.error('Failed to save chat snapshot.');
@@ -261,12 +344,23 @@ ${value.content}
     updateChatMestaData: async (metadata: IChatMetadata) => {
       const id = chatId.get();
 
-      if (!db || !id) {
+      if (!id) {
         return;
       }
 
       try {
-        await setMessages(db, id, initialMessages, urlId, description.get(), undefined, metadata);
+        // Try Supabase first if available
+        const supabaseAvailable = await isSupabaseAvailable();
+
+        if (supabaseAvailable) {
+          await supabaseChatClient.setMessages(id, initialMessages, urlId, description.get(), undefined, metadata);
+        } else if (db) {
+          // Fallback to IndexedDB
+          await setMessages(db, id, initialMessages, urlId, description.get(), undefined, metadata);
+        } else {
+          throw new Error('No persistence method available');
+        }
+
         chatMetadata.set(metadata);
       } catch (error) {
         toast.error('Failed to update chat metadata');
@@ -274,7 +368,7 @@ ${value.content}
       }
     },
     storeMessageHistory: async (messages: Message[]) => {
-      if (!db || messages.length === 0) {
+      if (messages.length === 0) {
         return;
       }
 
@@ -284,10 +378,32 @@ ${value.content}
       let _urlId = urlId;
 
       if (!urlId && firstArtifact?.id) {
-        const urlId = await getUrlId(db, firstArtifact.id);
-        _urlId = urlId;
-        navigateChat(urlId);
-        setUrlId(urlId);
+        try {
+          // Try Supabase first if available
+          const supabaseAvailable = await isSupabaseAvailable();
+
+          if (supabaseAvailable) {
+            const urlId = await supabaseChatClient.getUrlId(firstArtifact.id);
+            _urlId = urlId;
+          } else if (db) {
+            // Fallback to IndexedDB
+            const urlId = await getUrlId(db, firstArtifact.id);
+            _urlId = urlId;
+          }
+
+          if (_urlId) {
+            navigateChat(_urlId);
+            setUrlId(_urlId);
+          }
+        } catch (error) {
+          console.error('Failed to get URL ID:', error);
+        }
+      }
+
+      // Si pas d'URL ID, utiliser l'ID du chat comme URL ID
+      if (!_urlId) {
+        // L'ID du chat sera défini plus tard, on l'utilisera alors
+        console.log('URL ID will be set to chat ID when chat is created');
       }
 
       let chatSummary: string | undefined = undefined;
@@ -300,8 +416,23 @@ ${value.content}
             annotation && typeof annotation === 'object' && Object.keys(annotation).includes('type'),
         ) || []) as { type: string; value: any } & { [key: string]: any }[];
 
-        if (filteredAnnotations.find((annotation) => annotation.type === 'chatSummary')) {
-          chatSummary = filteredAnnotations.find((annotation) => annotation.type === 'chatSummary')?.summary;
+        // Chercher le summary dans les annotations
+        const summaryAnnotation = filteredAnnotations.find((annotation) => annotation.type === 'chatSummary');
+
+        if (summaryAnnotation) {
+          chatSummary = summaryAnnotation.summary || summaryAnnotation.value;
+          console.log('Found chat summary:', chatSummary);
+        }
+
+        // Si pas de summary dans les annotations, essayer d'extraire du contenu du message
+        if (!chatSummary && lastMessage.content) {
+          // Essayer d'extraire un résumé du contenu du message
+          const content = lastMessage.content;
+
+          if (content.length > 100) {
+            chatSummary = content.substring(0, 200) + '...';
+            console.log('Generated summary from content:', chatSummary);
+          }
         }
       }
 
@@ -313,12 +444,44 @@ ${value.content}
 
       // Ensure chatId.get() is used here as well
       if (initialMessages.length === 0 && !chatId.get()) {
-        const nextId = await getNextId(db);
+        try {
+          // Try Supabase first if available
+          const supabaseAvailable = await isSupabaseAvailable();
 
-        chatId.set(nextId);
+          let nextId: string;
 
-        if (!urlId) {
-          navigateChat(nextId);
+          if (supabaseAvailable) {
+            console.log('Using Supabase for new chat creation');
+            nextId = await supabaseChatClient.getNextId();
+          } else if (db) {
+            console.log('Using IndexedDB for new chat creation');
+
+            // Fallback to IndexedDB
+            nextId = await getNextId(db);
+          } else {
+            console.log('No persistence method available, using fallback ID generation');
+
+            // Ultimate fallback - generate ID manually
+            nextId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          }
+
+          chatId.set(nextId);
+
+          if (!urlId) {
+            navigateChat(nextId);
+          }
+        } catch (error) {
+          console.error('Failed to get next ID:', error);
+
+          // Don't show error toast immediately, try fallback
+          console.log('Trying fallback ID generation');
+
+          const fallbackId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          chatId.set(fallbackId);
+
+          if (!urlId) {
+            navigateChat(fallbackId);
+          }
         }
       }
 
@@ -332,23 +495,116 @@ ${value.content}
         return;
       }
 
-      await setMessages(
-        db,
-        finalChatId, // Use the potentially updated chatId
-        [...archivedMessages, ...messages],
-        urlId,
-        description.get(),
-        undefined,
-        chatMetadata.get(),
-      );
+      try {
+        // Si FORCE_SUPABASE_ONLY est activé, utiliser uniquement Supabase
+        if (FORCE_SUPABASE_ONLY) {
+          console.log('FORCE_SUPABASE_ONLY: Saving messages to Supabase only');
+
+          try {
+            await supabaseChatClient.setMessages(
+              finalChatId,
+              [...archivedMessages, ...messages],
+              finalChatId, // Utiliser l'ID du chat comme URL ID
+              description.get(),
+              undefined,
+              chatMetadata.get(),
+            );
+            console.log('Messages saved to Supabase successfully');
+          } catch (supabaseError) {
+            console.error('Supabase save failed:', supabaseError);
+
+            // Si Supabase échoue et qu'on a IndexedDB, utiliser IndexedDB comme fallback
+            if (db) {
+              console.log('Falling back to IndexedDB due to Supabase failure');
+
+              try {
+                await setMessages(
+                  db,
+                  finalChatId,
+                  [...archivedMessages, ...messages],
+                  finalChatId, // Utiliser l'ID du chat comme URL ID
+                  description.get(),
+                  undefined,
+                  chatMetadata.get(),
+                );
+                console.log('Messages saved to IndexedDB as fallback');
+              } catch (indexedDBError) {
+                console.error('IndexedDB fallback also failed:', indexedDBError);
+
+                // Ne pas lancer l'erreur, juste logger
+                console.warn('Both Supabase and IndexedDB failed, messages not saved');
+              }
+            } else {
+              console.warn('Supabase failed and no IndexedDB available, messages not saved');
+            }
+          }
+        } else {
+          // Mode normal avec fallback
+          const supabaseAvailable = await isSupabaseAvailable();
+
+          if (supabaseAvailable) {
+            console.log('Saving messages to Supabase');
+            await supabaseChatClient.setMessages(
+              finalChatId,
+              [...archivedMessages, ...messages],
+              finalChatId, // Utiliser l'ID du chat comme URL ID
+              description.get(),
+              undefined,
+              chatMetadata.get(),
+            );
+            console.log('Messages saved to Supabase successfully');
+          } else if (db) {
+            console.log('Saving messages to IndexedDB');
+
+            // Fallback to IndexedDB
+            await setMessages(
+              db,
+              finalChatId,
+              [...archivedMessages, ...messages],
+              finalChatId, // Utiliser l'ID du chat comme URL ID
+              description.get(),
+              undefined,
+              chatMetadata.get(),
+            );
+            console.log('Messages saved to IndexedDB successfully');
+          } else {
+            console.log('No persistence method available, messages will not be saved');
+
+            // Don't throw error, just log warning
+            console.warn('No persistence method available - messages not saved');
+          }
+        }
+      } catch (error) {
+        console.error('Failed to save messages:', error);
+
+        // Only show toast if it's a critical error
+        if (error instanceof Error && error.message.includes('No persistence method available')) {
+          console.warn('No persistence available, continuing without saving');
+        } else {
+          toast.error('Failed to save chat messages');
+        }
+      }
     },
     duplicateCurrentChat: async (listItemId: string) => {
-      if (!db || (!mixedId && !listItemId)) {
+      if (!mixedId && !listItemId) {
         return;
       }
 
       try {
-        const newId = await duplicateChat(db, mixedId || listItemId);
+        // Try Supabase first if available
+        const supabaseAvailable = await isSupabaseAvailable();
+
+        let newId: string;
+
+        if (supabaseAvailable) {
+          newId = await supabaseChatClient.duplicateChat(mixedId || listItemId);
+        } else if (db) {
+          // Fallback to IndexedDB
+          newId = await duplicateChat(db, mixedId || listItemId);
+        } else {
+          throw new Error('No persistence method available');
+        }
+
         navigate(`/chat/${newId}`);
         toast.success('Chat duplicated successfully');
       } catch (error) {
@@ -357,12 +613,21 @@ ${value.content}
       }
     },
     importChat: async (description: string, messages: Message[], metadata?: IChatMetadata) => {
-      if (!db) {
-        return;
-      }
-
       try {
-        const newId = await createChatFromMessages(db, description, messages, metadata);
+        // Try Supabase first if available
+        const supabaseAvailable = await isSupabaseAvailable();
+
+        let newId: string;
+
+        if (supabaseAvailable) {
+          newId = await supabaseChatClient.createChatFromMessages(description, messages, metadata);
+        } else if (db) {
+          // Fallback to IndexedDB
+          newId = await createChatFromMessages(db, description, messages, metadata);
+        } else {
+          throw new Error('No persistence method available');
+        }
+
         window.location.href = `/chat/${newId}`;
         toast.success('Chat imported successfully');
       } catch (error) {
@@ -374,26 +639,44 @@ ${value.content}
       }
     },
     exportChat: async (id = urlId) => {
-      if (!db || !id) {
+      if (!id) {
         return;
       }
 
-      const chat = await getMessages(db, id);
-      const chatData = {
-        messages: chat.messages,
-        description: chat.description,
-        exportDate: new Date().toISOString(),
-      };
+      try {
+        // Try Supabase first if available
+        const supabaseAvailable = await isSupabaseAvailable();
 
-      const blob = new Blob([JSON.stringify(chatData, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `chat-${new Date().toISOString()}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+        let chat: any;
+
+        if (supabaseAvailable) {
+          chat = await supabaseChatClient.getMessages(id);
+        } else if (db) {
+          // Fallback to IndexedDB
+          chat = await getMessages(db, id);
+        } else {
+          throw new Error('No persistence method available');
+        }
+
+        const chatData = {
+          messages: chat.messages,
+          description: chat.description,
+          exportDate: new Date().toISOString(),
+        };
+
+        const blob = new Blob([JSON.stringify(chatData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `chat-${new Date().toISOString()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Failed to export chat:', error);
+        toast.error('Failed to export chat');
+      }
     },
   };
 }

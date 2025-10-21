@@ -1,10 +1,14 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useSupabaseConnection } from '~/lib/hooks/useSupabaseConnection';
+import { useMigration } from '~/lib/hooks/useMigration';
 import { classNames } from '~/utils/classNames';
 import { useStore } from '@nanostores/react';
 import { chatId } from '~/lib/persistence/useChatHistory';
 import { fetchSupabaseStats } from '~/lib/stores/supabase';
-import { Dialog, DialogRoot, DialogClose, DialogTitle, DialogButton } from '~/components/ui/Dialog';
+import * as RadixDialog from '@radix-ui/react-dialog';
+import { Dialog, DialogClose, DialogTitle, DialogButton } from '~/components/ui/Dialog';
+import { MigrationDialog } from './MigrationDialog';
+import { SupabaseDiagnostic } from './SupabaseDiagnostic';
 
 export function SupabaseConnection() {
   const {
@@ -24,6 +28,9 @@ export function SupabaseConnection() {
     fetchProjectApiKeys,
   } = useSupabaseConnection();
 
+  const { migrationNeeded, isChecking } = useMigration();
+  const [showMigrationDialog, setShowMigrationDialog] = useState(false);
+  const [showDiagnostic, setShowDiagnostic] = useState(false);
   const currentChatId = useStore(chatId);
 
   useEffect(() => {
@@ -97,7 +104,7 @@ export function SupabaseConnection() {
         </Button>
       </div>
 
-      <DialogRoot open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <RadixDialog.Root open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         {isDialogOpen && (
           <Dialog className="max-w-[520px] p-6">
             {!isConnected ? (
@@ -291,20 +298,52 @@ export function SupabaseConnection() {
                   </div>
                 )}
 
-                <div className="flex justify-end gap-2 mt-6">
-                  <DialogClose asChild>
-                    <DialogButton type="secondary">Close</DialogButton>
-                  </DialogClose>
-                  <DialogButton type="danger" onClick={handleDisconnect}>
-                    <div className="i-ph:plugs w-4 h-4" />
-                    Disconnect
-                  </DialogButton>
+                {migrationNeeded && !isChecking && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="i-ph:database w-4 h-4 text-blue-600" />
+                      <h3 className="font-medium text-blue-900">Data Migration Available</h3>
+                    </div>
+                    <p className="text-sm text-blue-800 mb-3">
+                      You have existing chats in IndexedDB that can be migrated to Supabase for better accessibility and
+                      backup.
+                    </p>
+                    <button
+                      onClick={() => setShowMigrationDialog(true)}
+                      className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 text-sm"
+                    >
+                      Migrate Data to Supabase
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center mt-6">
+                  <button
+                    onClick={() => setShowDiagnostic(true)}
+                    className="bg-yellow-600 text-white px-3 py-2 rounded-lg hover:bg-yellow-700 text-sm"
+                  >
+                    🔧 Diagnostic
+                  </button>
+
+                  <div className="flex gap-2">
+                    <DialogClose asChild>
+                      <DialogButton type="secondary">Close</DialogButton>
+                    </DialogClose>
+                    <DialogButton type="danger" onClick={handleDisconnect}>
+                      <div className="i-ph:plugs w-4 h-4" />
+                      Disconnect
+                    </DialogButton>
+                  </div>
                 </div>
               </div>
             )}
           </Dialog>
         )}
-      </DialogRoot>
+      </RadixDialog.Root>
+
+      <MigrationDialog isOpen={showMigrationDialog} onClose={() => setShowMigrationDialog(false)} />
+
+      <SupabaseDiagnostic isOpen={showDiagnostic} onClose={() => setShowDiagnostic(false)} />
     </div>
   );
 }
