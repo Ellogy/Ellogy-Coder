@@ -51,18 +51,18 @@ export const LoginForm = () => {
 
       // Attendre un peu pour que les cookies soient bien sauvegardés avant la redirection
       setTimeout(() => {
-        console.log('Redirection vers la page principale après login réussi');
+        console.log('Redirecting to the main page after successful login');
         window.location.href = '/';
       }, 500);
     } catch (error: any) {
-      console.error('Erreur de connexion:', error);
+      console.error('Connection error:', error);
 
       if (error.response?.status === 401) {
-        setError('Email ou mot de passe incorrect');
+        setError('Invalid email or password.');
       } else if (error.response?.status === 403) {
-        setError('Accès refusé. Vérifiez vos permissions.');
+        setError('Access denied. Please check your permissions.');
       } else {
-        setError('Erreur de connexion. Veuillez réessayer.');
+        setError('Connection error. Please try again.');
       }
     } finally {
       setIsLoading(false);
