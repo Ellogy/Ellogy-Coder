@@ -151,6 +151,8 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     const [qrModalOpen, setQrModalOpen] = useState(false);
     const [isLoadingTicket, setIsLoadingTicket] = useState(false);
 
+
+    // Fonction pour gérer l'authentification automatique
     useEffect(() => {
       const handleAuthentication = async () => {
         try {
@@ -161,6 +163,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
           const { ellogyUser, ellogyToken } = getElloyDataFromCookies();
 
           if (!ellogyUser || !ellogyToken) {
+            // Si les cookies sont manquants, rediriger vers la page de login
             window.location.href = 'coder/login';
             return;
           }
