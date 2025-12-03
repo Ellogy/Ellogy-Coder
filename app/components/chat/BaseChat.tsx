@@ -36,6 +36,7 @@ import LlmErrorAlert from './LLMApiAlert';
 import { getUserProfile, updateUserProfile } from '~/lib/stores/profile';
 import { getElloyDataFromCookies, testElloyyCookies } from '~/utils/ellogyUtils';
 import { getTicketDescriptionByUserId, getTicketSummariesByTicketId, verifyTokenWithGateway } from '~/lib/api/gateway';
+import { chatId } from '~/lib/persistence/useChatHistory';
 
 const TEXTAREA_MIN_HEIGHT = 76;
 
@@ -188,7 +189,20 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
               // Afficher la page de chargement
               setIsLoadingTicket(true);
 
-              const ticketId = window.location.search.split('ticket=')[1];
+              // Extraire le ticketId de l'URL (gérer les cas avec d'autres paramètres)
+              const urlParams = new URLSearchParams(window.location.search);
+              let ticketId = urlParams.get('ticket') || window.location.search.split('ticket=')[1]?.split('&')[0];
+
+              if (ticketId) {
+                // Nettoyer le ticketId (enlever le préfixe chat_ s'il existe)
+                ticketId = ticketId.replace(/^chat_/, '');
+
+                // Définir le ticketId comme chatId
+                chatId.set(ticketId);
+
+                // Naviguer vers l'URL avec le ticketId (sans préfixe chat_)
+                window.history.replaceState({}, '', `/chat/${ticketId}`);
+              }
 
               // Récupérer toutes les descriptions de tickets pour l'utilisateur
               const allDescriptions = await getTicketDescriptionByUserId(ellogyUser.id, ellogyToken);

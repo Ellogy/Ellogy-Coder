@@ -402,8 +402,18 @@ ${value.content}
 
       // Si pas d'URL ID, utiliser l'ID du chat comme URL ID
       if (!_urlId) {
-        // L'ID du chat sera défini plus tard, on l'utilisera alors
-        console.log('URL ID will be set to chat ID when chat is created');
+        // Si le chatId est déjà défini (par exemple, avec un ticketId), l'utiliser comme urlId
+        const currentChatId = chatId.get();
+
+        if (currentChatId) {
+          _urlId = currentChatId;
+          navigateChat(currentChatId);
+          setUrlId(currentChatId);
+          console.log('Using existing chatId as urlId:', currentChatId);
+        } else {
+          // L'ID du chat sera défini plus tard, on l'utilisera alors
+          console.log('URL ID will be set to chat ID when chat is created');
+        }
       }
 
       let chatSummary: string | undefined = undefined;
@@ -467,8 +477,9 @@ ${value.content}
 
           chatId.set(nextId);
 
-          if (!urlId) {
+          if (!_urlId) {
             navigateChat(nextId);
+            setUrlId(nextId);
           }
         } catch (error) {
           console.error('Failed to get next ID:', error);
@@ -479,9 +490,20 @@ ${value.content}
           const fallbackId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
           chatId.set(fallbackId);
 
-          if (!urlId) {
+          if (!_urlId) {
             navigateChat(fallbackId);
+            setUrlId(fallbackId);
           }
+        }
+      } else if (chatId.get() && !_urlId) {
+        // Si le chatId est déjà défini (par exemple, avec un ticketId) mais pas d'urlId, utiliser le chatId
+        const currentChatId = chatId.get();
+
+        if (currentChatId) {
+          _urlId = currentChatId;
+          navigateChat(currentChatId);
+          setUrlId(currentChatId);
+          console.log('Using existing chatId as urlId (from ticket):', currentChatId);
         }
       }
 
