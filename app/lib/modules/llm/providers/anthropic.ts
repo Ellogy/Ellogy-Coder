@@ -70,6 +70,7 @@ export default class AnthropicProvider extends BaseProvider {
 
     const res = (await response.json()) as any;
     const staticModelIds = this.staticModels.map((m) => m.name);
+
     // Also map friendly names to their API identifiers for filtering
     const apiModelIds = ['claude-3-5-sonnet-20241022']; // API IDs that correspond to static models
 

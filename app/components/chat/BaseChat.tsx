@@ -151,7 +151,6 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     const [qrModalOpen, setQrModalOpen] = useState(false);
     const [isLoadingTicket, setIsLoadingTicket] = useState(false);
 
-
     // Fonction pour gérer l'authentification automatique
     useEffect(() => {
       const handleAuthentication = async () => {
