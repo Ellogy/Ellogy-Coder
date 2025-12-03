@@ -1,6 +1,6 @@
 // Configuration Supabase directe
 export const SUPABASE_CONFIG = {
-  url: 'https://zhtbhjwmzcirkzsezavs.supabase.co',
+  url: import.meta.env.VITE_SUPABASE_URL || '',
 
   // Utiliser import.meta.env pour Vite
   anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY || '',

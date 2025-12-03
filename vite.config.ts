@@ -23,7 +23,7 @@ export default defineConfig((config) => {
       allowedHosts: ['all'],
       proxy: {
         '/api/gateway': {
-          target: 'https://ellogygateway-test.azurewebsites.net',
+          target: 'https://ellogygateway-develop.azurewebsites.net',
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api\/gateway/, ''),
           configure: (proxy, _options) => {
@@ -85,6 +85,7 @@ export default defineConfig((config) => {
     ],
     envPrefix: [
       'VITE_',
+      'NEXT_PUBLIC_',
       'OPENAI_LIKE_API_BASE_URL',
       'OLLAMA_API_BASE_URL',
       'LMSTUDIO_API_BASE_URL',

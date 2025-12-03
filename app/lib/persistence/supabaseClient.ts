@@ -48,7 +48,7 @@ class SupabaseChatClient {
     // Si FORCE_SUPABASE_ONLY est activé, utiliser la configuration directe
     if (FORCE_SUPABASE_ONLY) {
       // Priorité 1: Variables d'environnement (.env)
-      if (SUPABASE_CONFIG.anonKey) {
+      if (SUPABASE_CONFIG.url && SUPABASE_CONFIG.anonKey) {
         console.log('Using Supabase config from environment variables');
         this._client = createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
       } else {
@@ -60,7 +60,7 @@ class SupabaseChatClient {
           this._client = createClient(connection.credentials.supabaseUrl, connection.credentials.anonKey);
         } else {
           throw new Error(
-            'Supabase credentials not available. Please configure VITE_SUPABASE_ANON_KEY in .env or connect to Supabase first.',
+            'Supabase credentials not available. Please configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env or connect to Supabase first.',
           );
         }
       }

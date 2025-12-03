@@ -18,8 +18,8 @@ export default class AnthropicProvider extends BaseProvider {
      * Claude 3.5 Sonnet: 200k context, excellent for complex reasoning and coding
      */
     {
-      name: 'claude-3-5-sonnet-20241022',
-      label: 'Claude 3.5 Sonnet',
+      name: 'claude-sonnet-4.5',
+      label: 'Claude Sonnet 4.5 (200k context)',
       provider: 'Anthropic',
       maxTokenAllowed: 200000,
       maxCompletionTokens: 8192,
@@ -70,8 +70,12 @@ export default class AnthropicProvider extends BaseProvider {
 
     const res = (await response.json()) as any;
     const staticModelIds = this.staticModels.map((m) => m.name);
+    // Also map friendly names to their API identifiers for filtering
+    const apiModelIds = ['claude-3-5-sonnet-20241022']; // API IDs that correspond to static models
 
-    const data = res.data.filter((model: any) => model.type === 'model' && !staticModelIds.includes(model.id));
+    const data = res.data.filter(
+      (model: any) => model.type === 'model' && !staticModelIds.includes(model.id) && !apiModelIds.includes(model.id),
+    );
 
     return data.map((m: any) => {
       // Get accurate context window from Anthropic API
@@ -93,7 +97,7 @@ export default class AnthropicProvider extends BaseProvider {
       // Determine completion token limits based on specific model
       let maxCompletionTokens = 4096; // default conservative limit for Claude 3 models
 
-      if (m.id?.includes('claude-3-5-sonnet-20241022')) {
+      if (m.id?.includes('claude-3-5-sonnet-20241022') || m.id?.includes('claude-sonnet-4.5')) {
         maxCompletionTokens = 8192; // Claude 3.5 Sonnet 20241022: 8K output limit (with beta header)
       } else if (m.id?.includes('claude-3-5-sonnet')) {
         maxCompletionTokens = 4096; // Other Claude 3.5 Sonnet models: 4K default
@@ -140,6 +144,13 @@ export default class AnthropicProvider extends BaseProvider {
       headers: { 'anthropic-beta': 'output-128k-2025-02-19' },
     });
 
-    return anthropic(model);
+    // Map friendly model names to API identifiers
+    const modelMapping: Record<string, string> = {
+      'claude-sonnet-4.5': 'claude-3-5-sonnet-20241022',
+    };
+
+    const apiModelName = modelMapping[model] || model;
+
+    return anthropic(apiModelName);
   };
 }
