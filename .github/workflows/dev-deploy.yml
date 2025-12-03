@@ -21,7 +21,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN_GHCR }}
+          password: ${{ secrets.TOKEN_GITHUB }}
 
       - name: Build docker compose (development profile)
         run: docker compose --profile development build --no-cache
@@ -52,7 +52,7 @@ jobs:
         run: |
           ssh ${{ secrets.DEV_VM_USER }}@${{ secrets.DEV_VM_IP }} "
             cd /home/azureuser/Coder &&
-            echo '${{ secrets.GITHUB_TOKEN_GHCR }}' | docker login ghcr.io -u ellogy --password-stdin &&
+            echo '${{ secrets.TOKEN_GITHUB }}' | docker login ghcr.io -u ellogy --password-stdin &&
             if docker image inspect ghcr.io/ellogy/ellogy-coder:latest > /dev/null 2>&1; then
               docker tag ghcr.io/ellogy/ellogy-coder:latest ghcr.io/ellogy/ellogy-coder:old
             fi &&
