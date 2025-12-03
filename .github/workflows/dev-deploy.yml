@@ -63,13 +63,13 @@ jobs:
           EOF
             # Build with docker-compose
             echo 'Building Docker images...' &&
-            docker-compose --profile development build --no-cache &&
+            docker compose --profile development build --no-cache &&
             # Stop existing containers
-            docker-compose --profile development down || true &&
+            docker compose --profile development down || true &&
             # Start containers
             echo 'Starting containers...' &&
             export COMPOSE_HTTP_TIMEOUT=300 &&
-            docker-compose --profile development up -d &&
+            docker compose --profile development up -d &&
             # Clean up dangling images (none)
             echo 'Cleaning up dangling Docker images...' &&
             docker image prune -f
