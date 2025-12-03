@@ -56,8 +56,8 @@ jobs:
             if docker image inspect ghcr.io/ellogy/ellogy-coder:latest > /dev/null 2>&1; then
               docker tag ghcr.io/ellogy/ellogy-coder:latest ghcr.io/ellogy/ellogy-coder:old
             fi &&
-            docker compose pull app-dev &&
-            docker compose --profile development up -d --force-recreate &&
+            docker-compose pull app-dev &&
+            docker-compose --profile development up -d --force-recreate &&
             if docker image inspect ghcr.io/ellogy/ellogy-coder:old > /dev/null 2>&1; then
               docker rmi ghcr.io/ellogy/ellogy-coder:old
             fi
