@@ -22,19 +22,27 @@ jobs:
         run: |
           ssh ${{ secrets.DEV_VM_USER }}@${{ secrets.DEV_VM_IP }} "
             # Clone or update repository (repo: Ellogy-Coder, directory: Coder)
-            if [ -d /home/azureuser/Coder ]; then
+            if [ -d /home/azureuser/Coder ] && [ -d /home/azureuser/Coder/.git ]; then
               echo 'Repository exists, updating...' &&
               cd /home/azureuser/Coder &&
               git fetch origin &&
               git reset --hard origin/${{ github.ref_name }} || git reset --hard origin/main
             else
-              echo 'Cloning repository...' &&
+              echo 'Repository not found or invalid, cloning...' &&
+              if [ -d /home/azureuser/Coder ]; then
+                rm -rf /home/azureuser/Coder
+              fi &&
               cd /home/azureuser &&
               git clone https://github.com/${{ github.repository }}.git Coder &&
               cd Coder &&
               git checkout ${{ github.ref_name }} || git checkout main
             fi &&
             cd /home/azureuser/Coder &&
+            # Verify docker-compose.yml exists
+            if [ ! -f docker-compose.yml ] && [ ! -f docker-compose.yaml ]; then
+              echo 'ERROR: docker-compose.yml not found in repository!' >&2
+              exit 1
+            fi &&
             # Create .env file
             echo 'Creating .env file...' &&
             cat > .env << EOF
