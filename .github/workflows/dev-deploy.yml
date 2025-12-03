@@ -52,14 +52,12 @@ jobs:
         run: |
           ssh ${{ secrets.DEV_VM_USER }}@${{ secrets.DEV_VM_IP }} "
             cd /home/azureuser/Coder &&
-            # Renommer l'ancienne image si elle existe
+            echo '${{ secrets.GITHUB_TOKEN_GHCR }}' | docker login ghcr.io -u ellogy --password-stdin &&
             if docker image inspect ghcr.io/ellogy/ellogy-coder:latest > /dev/null 2>&1; then
               docker tag ghcr.io/ellogy/ellogy-coder:latest ghcr.io/ellogy/ellogy-coder:old
             fi &&
-            # Pull et relancer les conteneurs
-            docker compose pull &&
-            docker compose up -d --force-recreate &&
-            # Supprimer l'ancienne image
+            docker compose pull app-dev &&
+            docker compose --profile development up -d --force-recreate &&
             if docker image inspect ghcr.io/ellogy/ellogy-coder:old > /dev/null 2>&1; then
               docker rmi ghcr.io/ellogy/ellogy-coder:old
             fi
