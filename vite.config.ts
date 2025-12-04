@@ -6,11 +6,33 @@ import { optimizeCssModules } from 'vite-plugin-optimize-css-modules'
 import tsconfigPaths from 'vite-tsconfig-paths'
 import * as dotenv from 'dotenv'
 import { env } from 'node:process'
+import { resolve } from 'node:path'
+import { existsSync } from 'node:fs'
 
 // Load environment variables from multiple files
-dotenv.config({ path: '.env.production' })
-dotenv.config({ path: '.env' })
-dotenv.config()
+// Note: override: false ensures that existing env vars take precedence
+// Load in order: .env.production -> .env -> .env.local
+const envFiles = ['.env.production', '.env', '.env.local'];
+
+for (const envFile of envFiles) {
+  const envPath = resolve(process.cwd(), envFile);
+  if (existsSync(envPath)) {
+    const result = dotenv.config({ path: envPath, override: false });
+    if (result.error) {
+      console.warn(`⚠️  Warning loading ${envFile}:`, result.error.message);
+    } else if (result.parsed) {
+      console.log(`✅ Loaded ${envFile} (${Object.keys(result.parsed).length} variables)`);
+    }
+  }
+}
+
+// Debug: Log VITE_GATEWAY_URL if it exists (for troubleshooting)
+if (process.env.VITE_GATEWAY_URL) {
+  console.log('✅ VITE_GATEWAY_URL loaded:', process.env.VITE_GATEWAY_URL);
+} else {
+  console.warn('⚠️  VITE_GATEWAY_URL not found in environment variables');
+  console.warn('   Vérifiez que VITE_GATEWAY_URL est défini dans .env, .env.local ou .env.production');
+}
 
 export default defineConfig((config) => {
   return {
@@ -22,18 +44,33 @@ export default defineConfig((config) => {
       host: '0.0.0.0',
       port: 5173,
       allowedHosts: ['all'],
+      hmr: {
+        protocol: process.env.VITE_HMR_PROTOCOL || 'wss',
+        host: process.env.VITE_HMR_HOST || 'dev.ellogy.ai',
+        clientPort: process.env.VITE_HMR_PORT ? parseInt(process.env.VITE_HMR_PORT) : 443,
+      },
       proxy: {
         '/api/gateway': {
           target: (() => {
-            const gatewayUrl = process.env.VITE_GATEWAY_URL;
+            // Try multiple sources for the gateway URL
+            const gatewayUrl =
+              process.env.VITE_GATEWAY_URL ||
+              process.env.GATEWAY_URL ||
+              '';
+            
             if (!gatewayUrl) {
               console.error(
                 "❌ ERREUR: La variable d'environnement VITE_GATEWAY_URL n'est pas définie.\n" +
-                  "   Veuillez l'ajouter dans votre fichier .env avec la valeur suivante:\n" +
-                  "   VITE_GATEWAY_URL=https://votre-gateway-url.com",
+                  "   Veuillez l'ajouter dans votre fichier .env, .env.local ou .env.production avec:\n" +
+                  "   VITE_GATEWAY_URL=https://votre-gateway-url.com\n" +
+                  "   Fichiers vérifiés: .env.production, .env, .env.local\n" +
+                  "   Valeur actuelle de process.env.VITE_GATEWAY_URL:",
+                process.env.VITE_GATEWAY_URL || 'undefined',
               );
+            } else {
+              console.log('✅ Gateway URL configuré:', gatewayUrl);
             }
-            return gatewayUrl || '';
+            return gatewayUrl;
           })(),
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api\/gateway/, ''),
