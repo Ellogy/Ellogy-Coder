@@ -627,7 +627,7 @@ ${value.content}
           throw new Error('No persistence method available');
         }
 
-        navigate(`/chat/${newId}`);
+        navigate(`/coder/chat/${newId}`);
         toast.success('Chat duplicated successfully');
       } catch (error) {
         toast.error('Failed to duplicate chat');
@@ -650,7 +650,7 @@ ${value.content}
           throw new Error('No persistence method available');
         }
 
-        window.location.href = `/chat/${newId}`;
+        window.location.href = `/coder/chat/${newId}`;
         toast.success('Chat imported successfully');
       } catch (error) {
         if (error instanceof Error) {
@@ -710,7 +710,7 @@ function navigateChat(nextId: string) {
    * `navigate(`/chat/${nextId}`, { replace: true });`
    */
   const url = new URL(window.location.href);
-  url.pathname = `/chat/${nextId}`;
+  url.pathname = `/coder/chat/${nextId}`;
 
   window.history.replaceState({}, '', url);
 }
