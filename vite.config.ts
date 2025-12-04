@@ -53,7 +53,7 @@ export default defineConfig((config) => {
               process.env.VITE_GATEWAY_URL ||
               process.env.GATEWAY_URL ||
               '';
-            
+
             if (!gatewayUrl) {
               console.error(
                 "❌ ERREUR: La variable d'environnement VITE_GATEWAY_URL n'est pas définie.\n" +

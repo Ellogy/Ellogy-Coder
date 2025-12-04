@@ -35,8 +35,10 @@ export const gatewayConfig: GatewayConfig = {
  * En production (déployé), utilise toujours l'URL directe du gateway, jamais localhost
  */
 export const getGatewayUrl = (env: 'dev' | 'prod' = 'dev'): string => {
-  // Toujours utiliser l'URL directe du gateway (pas de proxy localhost)
-  // Le proxy /api/gateway n'est utilisé que si explicitement configuré
+  /*
+   * Toujours utiliser l'URL directe du gateway (pas de proxy localhost)
+   * Le proxy /api/gateway n'est utilisé que si explicitement configuré
+   */
   const url = gatewayConfig[env].gateway || gatewayConfig.dev.gateway || gatewayConfig.prod.gateway;
 
   if (!url) {
@@ -59,11 +61,15 @@ export const getCurrentEnvironment = (): 'dev' | 'prod' => {
   // Si on est dans le navigateur et pas sur localhost, c'est la production
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
-    // Seulement localhost/127.0.0.1 est considéré comme dev
-    // Tout le reste (dev.ellogy.ai, etc.) est considéré comme prod
+
+    /*
+     * Seulement localhost/127.0.0.1 est considéré comme dev
+     * Tout le reste (dev.ellogy.ai, etc.) est considéré comme prod
+     */
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       return 'dev';
     }
+
     // En production déployée, toujours utiliser 'prod'
     return 'prod';
   }

@@ -201,7 +201,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                 chatId.set(ticketId);
 
                 // Naviguer vers l'URL avec le ticketId (sans préfixe chat_)
-                window.history.replaceState({}, '', `/chat/${ticketId}`);
+                window.history.replaceState({}, '', `/coder/chat/${ticketId}`);
               }
 
               // Récupérer toutes les descriptions de tickets pour l'utilisateur
