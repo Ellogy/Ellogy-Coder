@@ -44,11 +44,7 @@ export default defineConfig((config) => {
       host: '0.0.0.0',
       port: 5173,
       allowedHosts: ['all'],
-      hmr: {
-        protocol: process.env.VITE_HMR_PROTOCOL || 'wss',
-        host: process.env.VITE_HMR_HOST || 'dev.ellogy.ai',
-        clientPort: process.env.VITE_HMR_PORT ? parseInt(process.env.VITE_HMR_PORT) : 443,
-      },
+      hmr: false,
       proxy: {
         '/api/gateway': {
           target: (() => {
