@@ -5,6 +5,7 @@ import { nodePolyfills } from 'vite-plugin-node-polyfills'
 import { optimizeCssModules } from 'vite-plugin-optimize-css-modules'
 import tsconfigPaths from 'vite-tsconfig-paths'
 import * as dotenv from 'dotenv'
+import { env } from 'node:process'
 
 // Load environment variables from multiple files
 dotenv.config({ path: '.env.production' })
@@ -23,7 +24,17 @@ export default defineConfig((config) => {
       allowedHosts: ['all'],
       proxy: {
         '/api/gateway': {
-          target: 'https://ellogygateway-develop.azurewebsites.net',
+          target: (() => {
+            const gatewayUrl = process.env.VITE_GATEWAY_URL;
+            if (!gatewayUrl) {
+              console.error(
+                "❌ ERREUR: La variable d'environnement VITE_GATEWAY_URL n'est pas définie.\n" +
+                  "   Veuillez l'ajouter dans votre fichier .env avec la valeur suivante:\n" +
+                  "   VITE_GATEWAY_URL=https://votre-gateway-url.com",
+              );
+            }
+            return gatewayUrl || '';
+          })(),
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api\/gateway/, ''),
           configure: (proxy, _options) => {

@@ -11,12 +11,23 @@ export interface GatewayConfig {
   };
 }
 
+// Vérification de la variable d'environnement VITE_GATEWAY_URL
+const gatewayUrl = process.env.VITE_GATEWAY_URL;
+
+if (!gatewayUrl) {
+  console.error(
+    "❌ ERREUR: La variable d'environnement VITE_GATEWAY_URL n'est pas définie.\n" +
+      "   Veuillez l'ajouter dans votre fichier .env avec la valeur suivante:\n" +
+      "   VITE_GATEWAY_URL=https://votre-gateway-url.com",
+  );
+}
+
 export const gatewayConfig: GatewayConfig = {
   dev: {
-    gateway: 'https://ellogygateway-develop.azurewebsites.net',
+    gateway: gatewayUrl || '',
   },
   prod: {
-    gateway: 'https://ellogygateway-develop.azurewebsites.net',
+    gateway: gatewayUrl || '',
   },
 };
 
@@ -29,7 +40,16 @@ export const getGatewayUrl = (env: 'dev' | 'prod' = 'dev'): string => {
     return '/api/gateway';
   }
 
-  return gatewayConfig[env].gateway;
+  const url = gatewayConfig[env].gateway;
+
+  if (!url) {
+    console.error(
+      `❌ ERREUR: L'URL du gateway pour l'environnement "${env}" n'est pas définie.\n` +
+        "   Veuillez définir VITE_GATEWAY_URL dans votre fichier .env",
+    );
+  }
+
+  return url;
 };
 
 /**

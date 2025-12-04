@@ -22,7 +22,7 @@ export default class AmazonBedrockProvider extends BaseProvider {
   staticModels: ModelInfo[] = [
     {
       name: 'anthropic.claude-3-5-sonnet-20241022-v2:0',
-      label: 'Claude Sonnet 4.5 (200k context)',
+      label: 'Claude 3.5 Sonnet v2 (Bedrock)',
       provider: 'AmazonBedrock',
       maxTokenAllowed: 200000,
     },
