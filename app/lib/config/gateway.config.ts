@@ -11,8 +11,7 @@ export interface GatewayConfig {
   };
 }
 
-// Vérification de la variable d'environnement VITE_GATEWAY_URL
-const gatewayUrl = process.env.VITE_GATEWAY_URL;
+const gatewayUrl = import.meta.env.VITE_GATEWAY_URL || '';
 
 if (!gatewayUrl) {
   console.error(
@@ -33,20 +32,20 @@ export const gatewayConfig: GatewayConfig = {
 
 /**
  * Obtient l'URL du gateway selon l'environnement
+ * En production (déployé), utilise toujours l'URL directe du gateway, jamais localhost
  */
 export const getGatewayUrl = (env: 'dev' | 'prod' = 'dev'): string => {
-  // En développement, utiliser le proxy Vite pour éviter les problèmes CORS
-  if (env === 'dev' && typeof window !== 'undefined') {
-    return '/api/gateway';
-  }
-
-  const url = gatewayConfig[env].gateway;
+  // Toujours utiliser l'URL directe du gateway (pas de proxy localhost)
+  // Le proxy /api/gateway n'est utilisé que si explicitement configuré
+  const url = gatewayConfig[env].gateway || gatewayConfig.dev.gateway || gatewayConfig.prod.gateway;
 
   if (!url) {
     console.error(
       `❌ ERREUR: L'URL du gateway pour l'environnement "${env}" n'est pas définie.\n` +
-        '   Veuillez définir VITE_GATEWAY_URL dans votre fichier .env',
+        '   Veuillez définir VITE_GATEWAY_URL dans votre fichier .env\n' +
+        `   Valeur actuelle de import.meta.env.VITE_GATEWAY_URL: ${import.meta.env.VITE_GATEWAY_URL || 'undefined'}`,
     );
+    return '';
   }
 
   return url;
@@ -54,19 +53,23 @@ export const getGatewayUrl = (env: 'dev' | 'prod' = 'dev'): string => {
 
 /**
  * Détermine l'environnement actuel
+ * En production déployée, retourne toujours 'prod' pour utiliser l'URL directe
  */
 export const getCurrentEnvironment = (): 'dev' | 'prod' => {
-  /*
-   * En production, vous pouvez utiliser process.env.NODE_ENV
-   * ou une variable d'environnement spécifique
-   */
+  // Si on est dans le navigateur et pas sur localhost, c'est la production
   if (typeof window !== 'undefined') {
-    return window.location.hostname.includes('localhost') || window.location.hostname.includes('127.0.0.1')
-      ? 'dev'
-      : 'prod';
+    const hostname = window.location.hostname;
+    // Seulement localhost/127.0.0.1 est considéré comme dev
+    // Tout le reste (dev.ellogy.ai, etc.) est considéré comme prod
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'dev';
+    }
+    // En production déployée, toujours utiliser 'prod'
+    return 'prod';
   }
 
-  return process.env.NODE_ENV === 'production' ? 'prod' : 'dev';
+  // Côté serveur, utiliser NODE_ENV
+  return typeof process !== 'undefined' && process.env?.NODE_ENV === 'production' ? 'prod' : 'dev';
 };
 
 /**
