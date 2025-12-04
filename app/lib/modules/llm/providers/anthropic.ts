@@ -42,6 +42,7 @@ export default class AnthropicProvider extends BaseProvider {
       maxTokenAllowed: 200000,
       maxCompletionTokens: 32000,
     },
+
     // Claude Sonnet 4.5: 200k context, latest generation model
     {
       name: 'claude-sonnet-4-5-20250929',
@@ -99,6 +100,7 @@ export default class AnthropicProvider extends BaseProvider {
       } else if (m.id?.includes('claude-sonnet-4')) {
         contextWindow = 200000; // Claude Sonnet 4.x has 200k context
       }
+
       // Determine completion token limits based on specific model
       let maxCompletionTokens = 4096; // default conservative limit for Claude 3 models
 

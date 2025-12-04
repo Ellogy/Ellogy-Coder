@@ -18,7 +18,7 @@ if (!gatewayUrl) {
   console.error(
     "❌ ERREUR: La variable d'environnement VITE_GATEWAY_URL n'est pas définie.\n" +
       "   Veuillez l'ajouter dans votre fichier .env avec la valeur suivante:\n" +
-      "   VITE_GATEWAY_URL=https://votre-gateway-url.com",
+      '   VITE_GATEWAY_URL=https://votre-gateway-url.com',
   );
 }
 
@@ -45,7 +45,7 @@ export const getGatewayUrl = (env: 'dev' | 'prod' = 'dev'): string => {
   if (!url) {
     console.error(
       `❌ ERREUR: L'URL du gateway pour l'environnement "${env}" n'est pas définie.\n` +
-        "   Veuillez définir VITE_GATEWAY_URL dans votre fichier .env",
+        '   Veuillez définir VITE_GATEWAY_URL dans votre fichier .env',
     );
   }
 
